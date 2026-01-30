@@ -1,0 +1,22 @@
+opam-version: "2.0"
+name: "small-inversion"
+version: "prototype-0.1"
+synopsis: "A library for automated proxy-based small inversions in Rocq"
+description: """
+TODO
+"""
+maintainer: "Basile Gros <basile.gros@univ-grenoble-alpes.fr>"
+authors: ["Pierre Corbineau <pierre.corbineau@univ-grenoble-alpes.fr>"
+          "Basile Gros <basile.gros@univ-grenoble-alpes.fr>"
+          "Jean-Francois Monin <jean-francois.monin@univ-grenoble-alpes.fr>"
+]
+license: "TODO"
+homepage: "TODO"
+bug-reports: "TODO"
+dev-repo: "TODO"
+depends: [ "rocq-metarocq-template" {= "1.4.1+9.1"}
+  "coq" {>= "9.1.0"}]
+build: [
+  [make]
+]
+install: [make "install"]

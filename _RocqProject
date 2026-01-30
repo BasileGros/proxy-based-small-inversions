@@ -1,0 +1,42 @@
+plugin/META.small-inversion
+#-generate-meta-for-package small-inversion
+
+-I plugin
+
+-docroot .
+
+-R utils utils
+utils/TM_notations.v
+utils/error_monad.v
+utils/list_functions.v
+utils/db_manipulation.v
+utils/map_constr_with_binders.v
+utils/term_functions.v
+utils/term_printer.v
+utils/data_structures.v
+utils/TM_functions.v
+utils/dissection.v
+utils/utils.v
+
+-R SmallInversion SmallInversion
+SmallInversion/typeclass.v
+SmallInversion/strategy_engine.v
+SmallInversion/strategy_debug.v
+SmallInversion/dependent.v
+SmallInversion/derecursivation.v
+SmallInversion/data_extraction.v
+SmallInversion/proxy0.v
+SmallInversion/proxy_identity.v
+SmallInversion/deparameterisation.v
+SmallInversion/parameterisation.v
+SmallInversion/specialisation.v
+SmallInversion/strategy_creation.v
+SmallInversion/MR_interface.v
+SmallInversion/ML_interface.v
+SmallInversion/pattern_generation.v
+SmallInversion/small_inversion.v
+
+plugin/g_plugin.mlg
+plugin/main.ml
+
+plugin/plugin.mlpack

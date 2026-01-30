@@ -1,0 +1,74 @@
+DECLARE PLUGIN "small-inversion.plugin"
+
+{
+open Stdarg
+
+
+let fresh_env () =
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  env, sigma
+
+}
+
+VERNAC COMMAND EXTEND DeriveProxy CLASSIFIED AS SIDEFF
+| [ "Derive" "InvProxy" "for" ref(ind_ref) ] -> { Main.derive_proxy ind_ref false }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) ] -> { Main.derive_proxy ind_ref true }
+| [ "Derive" "InvProxy" "for" ref(ind_ref) "with" "prefix" constr(pref) ] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_proxy_prefix ind_ref pref false
+  }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) "with" "prefix" constr(pref) ] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_proxy_prefix ind_ref pref true
+  }
+END
+
+VERNAC COMMAND EXTEND DeriveOneProxy CLASSIFIED AS SIDEFF
+| [ "Derive" "InvProxy" "for" ref(ind_ref) "with" "index" constr(n)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, n) = Constrintern.interp_open_constr env evm n in
+    Main.derive_one_proxy ind_ref n false
+  }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) "with" "index" constr(n)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, n) = Constrintern.interp_open_constr env evm n in
+    Main.derive_one_proxy ind_ref n true }
+| [ "Derive" "InvProxy" "for" ref(ind_ref) "with" "index" constr(n) "with" "prefix" constr(pref)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, n) = Constrintern.interp_open_constr env evm n in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_one_proxy_prefix ind_ref n pref false
+  }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) "with" "index" constr(n) "with" "prefix" constr(pref)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, n) = Constrintern.interp_open_constr env evm n in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_one_proxy_prefix ind_ref n pref true }
+END
+
+VERNAC COMMAND EXTEND DerivePatternProxy CLASSIFIED AS SIDEFF
+| [ "Derive" "InvProxy" "for" ref(ind_ref) "with" "pattern" constr(patt)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, patt) = Constrintern.interp_open_constr env evm patt in
+    Main.derive_pattern_proxy ind_ref patt false
+  }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) "with" "pattern" constr(patt)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, patt) = Constrintern.interp_open_constr env evm patt in
+    Main.derive_pattern_proxy ind_ref patt true }
+| [ "Derive" "InvProxy" "for" ref(ind_ref) "with" "pattern" constr(patt) "with" "prefix" constr(pref)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, patt) = Constrintern.interp_open_constr env evm patt in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_pattern_proxy_prefix ind_ref patt pref false
+  }
+| [ "Derive" "Dependent" "InvProxy" "for" ref(ind_ref) "with" "pattern" constr(patt) "with" "prefix" constr(pref)] ->
+  { let (env, evm) = fresh_env () in
+    let (evm, patt) = Constrintern.interp_open_constr env evm patt in
+    let (evm, pref) = Constrintern.interp_open_constr env evm pref in
+    Main.derive_pattern_proxy_prefix ind_ref patt pref true }
+END
+
