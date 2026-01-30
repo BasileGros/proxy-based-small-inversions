@@ -28,5 +28,5 @@ Finally, only the plugin needs to be installed.
 The following command will install the plugin as well as all of its dependencies.  
 
 ```bash
-opam install TODO
+opam pin git+https://github.com/DeLectionnes/proxy-based-small-inversions
 ```

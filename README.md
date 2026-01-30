@@ -17,7 +17,7 @@ To learn more about proxy-based small inversions, see [here](https://hal.science
 
 # How to install and compile
 This plugin supports the Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
-Should opam be installed, the call to `TODO update quand version en ligne` should compile and install the plugin.  
+Should opam be installed, the call to `opam pin git+https://github.com/DeLectionnes/proxy-based-small-inversions` should compile and install the plugin.  
 For more details, see [INSTALL.md](./INSTALL.md).
 
 # How to use
@@ -37,11 +37,6 @@ Then, the tactic `sinv x` where x is the object to invert performs inversion in 
 Below are all the variants of the preliminary command that can be used to customise the inversion.
 <details>
 <summary> The Exemples folder holds various usecases of proxy-based small inversions and of this library. </summary>
-
-<!-- TODO laisser ?
-- [inversion_pilote_dep](./Exemples/inversion_pilote_dep.v)
-contient un example d'inversion avec pilote dépendant, pour future exploration.
--->
 
 - [matrices](./Exemples/matrices.v)
 showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq, using transposition of matrices as an example.

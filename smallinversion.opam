@@ -10,10 +10,10 @@ authors: ["Pierre Corbineau <pierre.corbineau@univ-grenoble-alpes.fr>"
           "Basile Gros <basile.gros@univ-grenoble-alpes.fr>"
           "Jean-Francois Monin <jean-francois.monin@univ-grenoble-alpes.fr>"
 ]
-license: "TODO"
-homepage: "TODO"
-bug-reports: "TODO"
-dev-repo: "TODO"
+license: "MPL-2.0"
+homepage: "https://github.com/DeLectionnes/proxy-based-small-inversions"
+bug-reports: "https://github.com/DeLectionnes/proxy-based-small-inversions"
+dev-repo: "https://github.com/DeLectionnes/proxy-based-small-inversions"
 depends: [ "rocq-metarocq-template" {= "1.4.1+9.1"}
   "coq" {>= "9.1.0"}]
 build: [
