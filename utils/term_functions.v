@@ -7,10 +7,6 @@ From utils Require Import db_manipulation.
 
 Notation nameAnon := {| binder_name := nAnon; binder_relevance := Relevant |}.
 
-Definition string_to_aname
-  (s : string) : aname :=
-  {| binder_name := nNamed s; binder_relevance := Relevant |}.
-
 (*Extracts the list of indices
 from the conclusion of a constructor's type telescope*)
 Fixpoint telescope_to_indices (t:term) (nb_args : nat) : list term :=
@@ -38,21 +34,6 @@ Fixpoint add_to_concl_telescope (t:term) (new_concl : list term) : term :=
   | tLetIn na t v cont  => tLetIn na t v (add_to_concl_telescope cont new_concl)
   | tApp t l => tApp t (l++new_concl)
   | _ => t
-  end.
-
-(*Inserts a type telescope into an other one, just before a reference to a sort*)
-Fixpoint insert_before_sort
-  (type_inserted : term) (type_to_insert : term -> term)
-  : term :=
-  match type_inserted with
-  | tSort s => type_to_insert (tSort s)
-  | tProd name type body =>
-      tProd name type (insert_before_sort  body type_to_insert)
-  |tLetIn name value type body =>
-     tLetIn name value type (insert_before_sort  body type_to_insert)
-  |tLambda name type body =>
-     tLambda name type (insert_before_sort  body type_to_insert)
-  | other_term => other_term
   end.
 
 
@@ -291,32 +272,6 @@ Definition mib_index_from_env
       end
   end.
 
-
-Fixpoint prod_telescope (size:nat) : term -> term :=
-  match size with
-  |0 => fun t => t
-  |S m => fun t => tProd nameAnon (tRel 0) (prod_telescope m t)
-  end.
-
-
-(*Transforms a list of terms into a letin telescope.
- Notably, puts a tRel 0 where the type should be,
-so it is only ever used before a zeta-reduction*)
-Fixpoint aux_list_term_to_tLetIn (l:list term) (n:nat) : term -> term :=
-  match l with
-  |[]  => (fun term_cont => term_cont)
-  |h::t =>
-     (fun term_cont =>
-        tLetIn nameAnon (lift0 n h) (tRel 0)
-          ((aux_list_term_to_tLetIn t (n+1) ) term_cont))
-  end
-.
-
-Definition list_term_to_tLetIn (l:list term) : term -> term :=
-  aux_list_term_to_tLetIn l 0.
-
-
-
 (*
 Transforms a chain of tProds into tLetIns with the values given
  *)
@@ -333,45 +288,10 @@ Fixpoint prod_to_letin
   |tProd nom type body, t::q => tLetIn nom t type (prod_to_letin body q)
 
   |terme_autre,_=> terme_autre
-  end
-.
-
-Fixpoint dummy_letin_telescope(n:nat) : term -> term :=
-  match n with
-  |0 => fun x => x
-  |S m => fun x => tLetIn nameAnon (tVar "") (tVar "") (dummy_letin_telescope m x)
   end.
 
-(*Removes the nth element in a tProd sequence.*)
-Fixpoint remove_tProd_type
-  (type:term) (position_to_remove:nat) : term :=
-  match type, position_to_remove with
-  |tProd n t body, 0   => body
-  |tProd n t body, S m => tProd n t (remove_tProd_type body m)
-  |other_term,_       => other_term
-  end
-.
-
-
-(*removes the first n parameters from a tprod telescope*)
-Fixpoint rec_suppr_params (term_suppr:term) (nb_params:nat) : term :=
-  match nb_params with
-  |0 => term_suppr
-  |S n => rec_suppr_params (remove_tProd_type term_suppr 0 ) n
-  end
-.
-
-(*Tranforms a list of parameters into a telescope of lambda terms*)
-Fixpoint params_into_lambdas (list_params : context) : term -> term :=
-  match list_params with
-  |[] => fun x => x
-  |decl::t =>
-     fun x =>
-       tLambda decl.(decl_name) decl.(decl_type) (params_into_lambdas t x)
-  end.
-
-
-(*same, but in reverse order of the list *)
+(*Tranforms a list of parameters into a telescope of lambda term
+but in reverse order of the list *)
 Definition rev_params_into_lambdas (list_params : context) := 
   fun x =>
     fold_left
@@ -417,15 +337,6 @@ Fixpoint create_anon_context (n:nat) : list aname :=
   |S m => nameAnon::(create_anon_context m)
   end.
 
-
-Definition print_aname (a:aname) : string :=
-  match a.(binder_name) with
-  |nAnon => " Anon "
-  |nNamed s => " "^s^" "
-  end.
-
-
-
 Definition merge_option{A}(o1 o2 : option A) : option A :=
   match o1, o2 with
   |Some a, _ => Some a
@@ -463,18 +374,6 @@ Definition rename_cstr (prefix : string)(suffix: string)(cstr : constructor_body
   |}.
 
 
-Definition insert_new_oibs_in_mib (oibs : list one_inductive_body) (mib : mutual_inductive_body)
-  : mutual_inductive_body :=
-  {|
-    ind_finite := mib.(ind_finite);
-    ind_npars := mib.(ind_npars);
-    ind_params := mib.(ind_params);
-    ind_bodies := oibs;
-    ind_universes := mib.(ind_universes);
-    ind_variance := mib.(ind_variance)
-    |}.
-
-
 Definition rename_kername (prefix : string)(suffix : string)(ker : kername)
   : kername :=
   let (modp, id) := ker in
@@ -486,15 +385,6 @@ Definition rename_inductive (prefix : string)(suffix : string)(ind : inductive)
     inductive_mind := rename_kername prefix suffix ind.(inductive_mind);
     inductive_ind := ind.(inductive_ind)
   |}.
-
-Fixpoint change_concl_telescope (telescope:term) (app_concl : term) (concl : list term) : term :=
-  match telescope with
-  |tProd name type body => tProd name type (change_concl_telescope body app_concl concl)
-  |tLetIn name value type body => tLetIn name value type (change_concl_telescope body app_concl concl)
-  |tLambda name type body => tLambda name type (change_concl_telescope body app_concl concl)
-  |tApp app list_app => tApp app_concl concl
-  |t => t
-  end.
 
 (*Change a prod into a letin at the position given.*)
 Fixpoint insert_letin_position
@@ -546,27 +436,3 @@ Fixpoint list_term_to_letin (l : list term) :=
      fun x =>
        tLetIn nameAnon val (tVar "dummy_type") (list_term_to_letin tl x)
   end.
-
-Fixpoint list_term_to_tprod (l : list term) :=
-  match l with
-  | [] => fun x => x
-  | val::tl =>
-     fun x =>
-       tProd nameAnon val (list_term_to_tprod tl x)
-  end.
-
-
-Fixpoint parameterise_ctx (ctx : context) (params : list term)  : term -> term :=
-  
-  match ctx with
-  |[] => fun x => x
-  |hd_decl::tl_ctx =>
-     let tl_telescope := parameterise_ctx tl_ctx params in
-     let let_in_params := list_term_to_letin params in
-     let let_in_type := let_in_params (tl_telescope hd_decl.(decl_type)) in
-     let prod_type := remove_let_in (let_in_type) [] in
-     let new_type := peel_telescope prod_type (length tl_ctx) in
-     (*let new_type := peel_telescope let_in_type ((length tl_ctx) + length params) in*)
-     fun x => tl_telescope (tProd nameAnon new_type x)
-  end.
-    

@@ -36,7 +36,7 @@ Fixpoint remove_let_in
      let type_new := (remove_let_in type l) in
      let decl := mkdecl nom (Some valeur) type_new  in 
      let result_term := remove_let_in cont (decl::l) in
-     (*lift_moins_un 0*) result_term
+     result_term
 
   |x => (expand_lets l x)
 
@@ -57,31 +57,6 @@ Fixpoint lift_past_params
      tLetIn name val type (lift_past_params value body n threshold)
   |t, _ => lift value threshold t
   end.
-
-(*Lifts spcifically the final inductive call in a constructor's type telescope*)
-Fixpoint lift_past_telescope
-  (value : nat)
-  (telescope:term)
-  (threshold:nat)
-  : term :=
-  match telescope with
-  |tProd name type body => tProd name type (lift_past_telescope value body threshold)
-  |tApp val list_args => tApp (lift value threshold val) list_args
-  |t => lift value threshold t
-  end.
-
-
-
-
-(*Takes a list of de Bruijn indexes tRel i and return a list of natural indexes i*)
-Fixpoint extract_tRel_list (list_tRel : list term) : list nat
-  :=
-  match list_tRel with
-  |[]             => []
-  |(tRel n)::tail => n::(extract_tRel_list tail)
-  |_::tail        => (extract_tRel_list tail)                  
-  end.
-
 
 (** Functions to use tVars in the place of db indices and swap afterwards.*)
 
@@ -129,14 +104,6 @@ Fixpoint context_vars_to_rel
      let new_decl := map_decl (convert_var_to_rel glob lvars []) decl in
      (new_decl::new_tl, decl.(decl_name)::lvars)
   end.
-
-Definition append_context_vars_prod
-  (glob : global_env)(lctx : context) (t:term)
-  : term :=
-  let (new_context,lvars) := context_vars_to_rel glob lctx in
-  let hd_term := it_mkProd_or_LetIn new_context in
-  let new_term := convert_var_to_rel glob lvars [] t in
-  hd_term new_term.
 
 Fixpoint ctx_to_call (p:context) (lvars : list term) : list term :=
   match p with
@@ -249,18 +216,3 @@ Definition create_context_constructor
   let new_type := var_inductive cons.(cstr_type) (tVar ("_"^name_disp)) in
   let new_decl := vass (string_to_aname ("_"^ cons.(cstr_name))) new_type in
   new_decl.
-
-Fixpoint create_context_constructors
-  (name_disp : string)(lcons : list constructor_body) (ctx_acc : context)
-  : context :=
-  match lcons with
-  |[] => ctx_acc
-  |cns::tl =>
-     let new_decl := create_context_constructor name_disp cns in
-     create_context_constructors name_disp tl ( new_decl :: ctx_acc)
-  end.
-
-
-Definition list_nat_to_list_db (l : list nat) :=
-  map (fun n => tRel n) l.
-  

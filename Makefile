@@ -15,7 +15,6 @@ cleanmake:
 	rm Makefile.rocq
 	rm Makefile.rocq.conf
 	rm .Makefile.rocq.d
-	cd ./tests; make cleanmake
 	cd ./Examples; make cleanmake
 
 allclean:

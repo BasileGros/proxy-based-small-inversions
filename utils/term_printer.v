@@ -4,27 +4,6 @@ From MetaRocq.Template Require Import Checker.
 From utils Require Import term_functions.
 From utils Require Import TM_functions.
 From utils Require Import TM_notations.
-(*
-Print term.
-Print kername.
-Print Sort.t_.
-Print BasicAst.context_decl.
-Print binder_annot.
-Print case_info.
-Print predicate.
-Print branch.
-Print map_case_branch_with_binders.
-Check rebuild_case_branch_ctx.
-Check rebuild_case_predicate_ctx.
-
-Search global_env inductive nat.
-
-Locate string_of_term_tree.string_of_term.
-
-Print constructor_body.
-Check lookup_inductive.
-
-*)
 
 Definition pRel (Γ : context) (n:nat) :=
   match nth_error Γ n with

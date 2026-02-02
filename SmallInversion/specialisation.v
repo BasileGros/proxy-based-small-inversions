@@ -1057,7 +1057,7 @@ Definition create_inversion_submatch
 
   (**The lambdas before the match and dB after variable*)
 
-  let lambdas_args := params_into_lambdas rev_args in
+  let lambdas_args := rev_params_into_lambdas constructor_R.(cstr_args) in
   let nb_args_R_after_variable := deBruijn_variable in
   let dB_after_variable := rev_range_deBruijn  nb_args_R_after_variable 0 in
   
