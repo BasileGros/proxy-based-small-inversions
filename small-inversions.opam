@@ -1,5 +1,5 @@
 opam-version: "2.0"
-name: "small-inversion"
+name: "small-inversions"
 version: "prototype-0.1"
 synopsis: "A library for automated proxy-based small inversions in Rocq"
 description: """
@@ -11,9 +11,9 @@ authors: ["Pierre Corbineau <pierre.corbineau@univ-grenoble-alpes.fr>"
           "Jean-Francois Monin <jean-francois.monin@univ-grenoble-alpes.fr>"
 ]
 license: "MPL-2.0"
-homepage: "https://github.com/DeLectionnes/proxy-based-small-inversions"
-bug-reports: "https://github.com/DeLectionnes/proxy-based-small-inversions"
-dev-repo: "https://github.com/DeLectionnes/proxy-based-small-inversions"
+homepage: "https://github.com/BasileGros/proxy-based-small-inversions"
+bug-reports: "https://github.com/BasileGros/proxy-based-small-inversions"
+dev-repo: "https://github.com/BasileGros/proxy-based-small-inversions"
 depends: [ "rocq-metarocq-template" {= "1.4.1+9.1"}
   "coq" {>= "9.1.0"}]
 build: [
