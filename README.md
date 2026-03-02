@@ -154,12 +154,12 @@ fun ... =>
   proxy_type := bbb...;
   invproxy := ccc...
 |}
-     : forall (ddd...), Proxy (T aaa...)
+     : forall (ddd...), InvProxy (T aaa...)
 ```
 In the last line, the parentheses around `ddd...` may be missing if there is only one variable.
-Then by copy-paste and small adjustments, make it an instance of the class `Proxy` along the following scheme:
+Then by copy-paste and small adjustments, make it an instance of the class `InvProxy` along the following scheme:
 ```coq
-Instance T_proxy (ddd...) : Proxy (T aaa...) :=
+Instance T_proxy (ddd...) : InvProxy (T aaa...) :=
 {|
   proxy_type := bbb...;
   invproxy := ccc...
@@ -204,7 +204,7 @@ fun _nat2 : nat =>
     | @FS n x => FS_S n x
     end
 |}
-     : forall _nat2 : nat, Proxy (t _nat2)
+     : forall _nat2 : nat, InvProxy (t _nat2)
 ```
 
 Then add in your source file:
@@ -213,7 +213,7 @@ Then add in your source file:
 Inductive t_O : Set :=  .
 Inductive t_S (n : nat) : Set :=  F1_S : t_S n | FS_S : t n → t_S n.
 
-Instance t_proxy (_nat2 : nat) : Proxy (t _nat2) :=
+Instance t_proxy (_nat2 : nat) : InvProxy (t _nat2) :=
 {|
   proxy_type := match _nat2 with
                 | 0 => t_O
@@ -239,8 +239,8 @@ Detailed algorithm:
 
 * on the first line,
   + add `Instance` at the beginning;
-  + after $~T$`_proxy`, insert the text of the last line after the `forall`, that is, `(ddd...) : Proxy (`$~T~$` aaa...)`;
-  the comma just before `Proxy` is replaced by a colon;
+  + after $~T$`_proxy`, insert the text of the last line after the `forall`, that is, `(ddd...) : InvProxy (`$~T~$` aaa...)`;
+  the comma just before `InvProxy` is replaced by a colon;
   + end the line by "`:=`" instead of "`=`";
 * remove the second line;
 * add a period after `|}` in the penultimate line;

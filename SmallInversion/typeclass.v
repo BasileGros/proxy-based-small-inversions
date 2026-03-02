@@ -1,8 +1,8 @@
 (** * Type Classes for proxy-based inversions *)
 
 
-Class Proxy  (T:Type) := {  proxy_type:     Type;  invproxy:     T -> proxy_type }.
-Class dProxy (T:Type) := { dproxy_type: T -> Type; dinvproxy: forall t:T, dproxy_type t }.
+Class InvProxy  (T:Type) := {  invproxy_type:     Type;  invproxy:     T -> invproxy_type }.
+Class dInvProxy (T:Type) := { dinvproxy_type: T -> Type; dinvproxy: forall t:T, dinvproxy_type t }.
 
 
 (** ** Algebraic variant *)

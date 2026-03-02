@@ -83,10 +83,10 @@ and transforming the variabel references into De Bruijn indexes.*)
   let typeclass_proxy :=
     if isdep transfo_info
     then
-      {| inductive_mind := (MPfile ["typeclass"; "SmallInversion"], "dProxy");
+      {| inductive_mind := (MPfile ["typeclass"; "SmallInversion"], "dInvProxy");
         inductive_ind := 0 |}
     else
-      {| inductive_mind := (MPfile ["typeclass"; "SmallInversion"], "Proxy");
+      {| inductive_mind := (MPfile ["typeclass"; "SmallInversion"], "InvProxy");
         inductive_ind := 0 |}
   in
   let instance_proxy := tApp
