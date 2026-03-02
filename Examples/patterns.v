@@ -45,6 +45,7 @@ Lemma TailPosition_mono {A:Type} {l:list A} {x} {p1 p2 : list_position l} :
 Proof using Type.
   intro h.
   create_sinv_call ( TailPosition x l p1).
+  create_sinv_call_eq h.
   apply (@f_equal _ _ invproxy) in h.
   simpl in h; congruence.
 Qed.
@@ -65,33 +66,3 @@ Proof.
   right; inv H; reflexivity.
   
 Qed.
-
-
-
-Inductive ge3 : nat -> Prop :=
-| G10 : ge3 3
-| GS n : ge3 n -> ge3 (S n).
-
-
-
-Inductive Pilot : Type :=
-|p1  : Pilot
-|pn  {A} (l:list A) : Pilot.
-
-Inductive Relation : Pilot -> Prop :=
-|Rel (l : list nat) : l = l -> Relation (pn l).
-
-Derive InvProxy for Relation.
-
-Derive InvProxy for Relation with pattern (pilotInversion 0 [noInversion; pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]]) with prefix "_".
-
-
-
-Lemma totot n l :  Rel (S n :: l) eq_refl = Rel (S n :: l) eq_refl -> l = l.
-Proof.
-  intros r_eq.
-  create_sinv_call_eq r_eq.
-  apply (@f_equal _ _ invproxy) in  r_eq.
-  simpl in r_eq.
-  congruence.
-  Qed.
