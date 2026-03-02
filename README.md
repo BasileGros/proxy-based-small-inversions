@@ -5,13 +5,14 @@ In particular, the latter are not cluttered by additional equality constraints.
 They are especially useful for defining programs with dependent types and developing formal proofs about them.
 
 
-Proxy-based small inversions derive specialised versions of an inductive type according to the values (more precisely, the patterns) of the inductive indices of that type, so that filtering on a term of that inductive type takes into account its particular form, i.e., the constructors used in its indices.
+Proxy-based small inversions derive specialised versions of an inductive type $T$ according to the values (more precisely, the patterns) of the inductive indices of $T$, so that filtering on a term of type $T$ takes into account its particular form, i.e., the constructors used in its indices.
 
 They work in two steps:
-- First, defining suitable partial inductive types, which mimic the original inductive type depending on constructors used for one or more of its indices. A mapping from the original inductive type to the new partial inductive types is also defined. The partial inductive types together with this mapping act as a proxy for the original inductive type.
+
+- First, defining suitable partial inductive types, which mimic the original inductive type $T$ depending on constructors used for one or more of its indices. A mapping from $T$ to the new partial inductive types is also defined. The partial inductive types together with this mapping act as a proxy for $T$.
 This step only needs to be performed once.
 
-- Second, inverting a object consists in decomposing a relevant proxy for it, using the `destruct` tactic (in interactive mode) or a pattern matching (when defining a dependtly typed functional program).
+- Second, inverting a object. It consists in decomposing a relevant proxy for it, using the `destruct` tactic (in interactive mode) or a pattern matching (when defining a dependently typed functional program).
 
 Both of those steps are supported by automated tools, the first by various commands that customise the specialisation of the original inductive type into partial inductive types, the second in the form of tactics to be called in interactive mode.
 
@@ -20,10 +21,15 @@ To learn more about proxy-based small inversions, see [here](https://hal.science
 
 # Installation and compilation
 This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
-Should opam be installed, the call to the following command should compile and install the plugin.
+Should opam be installed, the following command should compile and install the plugin.
 ```bash
 opam pin git+https://github.com/BasileGros/proxy-based-small-inversions
 ```
+
+``` bash
+opam pin git+ssh://git@github.com/BasileGros/proxy-based-small-inversions.git
+```
+
 For more details, see [INSTALL.md](./INSTALL.md).
 
 # Usage
@@ -34,18 +40,17 @@ From SmallInversion Require Import small_inversion.
 ```
 
 Proxy-based small inversions are used in two steps.
-First, for each inductive type `SOMENAME` on which inversions will be performed, 
+First, for each inductive type $T$ on which inversions will be performed,
 call the preliminary command:  
-`Derive InvProxy for SOMENAME.`  
-This command derives custom-made definitions (partial inductive types and a function called `SOMENAME_proxy`).
+`Derive InvProxy for`$~T$`.`  
+This command derives custom-made definitions (partial inductive types and a function called $T$`_proxy`).
 You need to be in the global environment, i.e., __not inside a proof__.
 
-Then, you can call the tactic `sinv x` where x is the object to invert. 
+Then, you can call the tactic `sinv x` where x is the object to invert.
 It performs a small inversion in proof mode.
 
-Below are all the variants of the preliminary command that can be used to customise inversion.
-<details>
-<summary> The Examples folder illustrates various usecases of proxy-based small inversions. </summary>
+<!--- <details> -->
+<summary> The [Examples](./Examples) folder illustrates various use cases of proxy-based small inversions. </summary>
 
 - [matrices](./Examples/matrices.v)
 showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq, using transposition of matrices as an example.
@@ -66,28 +71,28 @@ uses the toy example of the colors of a trafic light to present inversion of mul
 uses proxy-based small inversions to prove properties on a custom inductive type representing the position of elements within a list.
 
 - [patterns](./Examples/patterns.v)
-Showcases the commands used to invert an inductive type according either to a user-given pattern, or a pattern custom-made for a specific inductively typed object.
-</details>
+showcases the commands used to invert an inductive type according either to a user-given pattern, or a pattern custom-made for a specific inductively typed object.
+<!--- </details> -->
 
 ## The commands to derive the intermediate definitions.
 ### Specialising over all possible indices
 As said earlier, proxy-based small inversions work by specialising an inductive type over the possible constructors its inductively-typed indices can take.
 
-The general command `Derive InvProxy for SOMENAME.` specialises the inductive type over all useful indices, i.e. all indices that take the form of a constructor in the conclusion of the constructors of the inductive type.
+The general command "`Derive InvProxy for `$~T$" specialises the inductive type over all *useful* indices -- technically: all indices that take the form of a constructor in the conclusion of the constructors of $T$.
 
-This strategy may be not suitable when, in the type of the object to be inverted, one or more of those indices are just variables.
+This strategy may be not suitable when, in the type of the object to be inverted, some of those indices are just variables.
 In those cases the following error will appear:
 ```coq
 Error: Not an inductive definition.
 ```
 
-In those cases, the following sections will show how to generate more precise partial inductive types.
+The following sections will show how to deal with this situation by generating more precise partial inductive types.
 
 ### Specialising over a single index
 
 To specialise on a single given pilot index only, use  
-`Derive InvProxy for SOMENAME with index n.`  
-Where `n` is the (0-indexed) position of the index to invert.
+`Derive InvProxy for `$~T~~$` with index n.`  
+Here, `n` is the (0-indexed) position of the index to invert.
 Do not take parameters into account while computing this position.
 
 
@@ -99,36 +104,37 @@ Inductive inversion_pattern :=
 | noInversion
 | pilotInversion : nat -> list inversion_pattern -> inversion_pattern
 ```
-For our example, if we want to invert an inductive type on the second index, then invert the second partial inductive type on the first of its index, we would write  
+
+It is possible to automatically generate this pattern and the associated command.
+To do so, while in proof mode at the step where you want to invert, execute `create_sinv_call x` where `x` is the object you want to invert.
+This will print in the Rocq message buffer the command that you have to enter before the current proof/definition to invert the given object `x`.
+(If you need dependent inversion, use `create_sdinv_call x`.)
+
+For our example, if we want to invert an inductive type on its second index, then invert the second partial inductive type on the first of its indices, we would write  
 `Definition pattern_inv := pilotInversion 1 [noInversion; pilotInversion 0 [noInversion;noInversion]].`  
 Note that we assume that at each inversion, we get two partial inductive types, the length of the sublists must match the number of partial inductive types generated (i.e. the number of constructors of the type of the index to invert on).
 Then, we use this pattern with the following command:  
-`Derive InvProxy for SOMENAME with pattern pattern_inv.`  
-
-It is possible to automatically generate this pattern and the associated command.
-To do so, while in proof mode at the step where you want to invert, execute `create_sinv_call x` where `x` is the object you want to invert. 
-This will print in the Rocq message buffer the command that you have to enter before the current proof/definition to invert the given object `x`. 
-(If you need dependent inversion, use `create_sdinv_call x`.)
+`Derive InvProxy for `$~T~\:$` with pattern pattern_inv.`  
 
 In the specific case where you have an equality between two inductively typed terms, and you want to invert them (see for example [`list_position.v#45`](./Examples/list_position.v#L45)), use the tactic `create_sinv_call_eq`.
 
 
 ### Dependent inversion
-Dependent inversion is needed in cases where the term to invert also appears in the goal and needs to be substituted.
-To get a dependent inversion, add `Dependent` in front of `InvProxy` in any of the commands described above: `Derive Dependent InvProxy for SOMENAME.`
+Dependent inversion is needed in the cases where the term to invert also appears in the goal and needs to be substituted.
+To get a dependent inversion, add `Dependent` in front of `InvProxy` in any of the commands described above: `Derive Dependent InvProxy for `$~T~$`.`
 The tactic to call for dependent inversion is `sdinv`.
 
-### Prefix to avoid name collistions
-For any of the above cases, adding `with prefix str` to the command will add the prefix `str` to all of the generated Rocq objects. This is necessary to sometimes avoid name collisions.  
-`Derive InvProxy for SOMENAME with prefix str.`
+### Adding a prefix to avoid name collisions
+For any of the above cases, adding `with prefix str` at the end of the command will add the prefix `str` to all of the generated Rocq objects. This is useful to avoid avoid accidental name collisions.  
+`Derive InvProxy for `$~T~$` with prefix str.`
 
 ### Making the display clearer
 Proxy-based small inversions proceed by defining auxiliary inductive types.
 By default, Rocq automatically generates additional elimination principles which are not used here and produce undesirable output.
 For comfort, it is better to surround the `Derive InvProxy` calls by `Unset Elimination Schemes.` and `Set Elimination Schemes.` so that only useful names generated by the plugin will be displayed.
 
-## Using small inversions in definition mode rather than proof mode
-Once you've generated the partial inductive types and proxy, it is possible invert an object of the inductive type by either `match invproxy name_object with` in a definition body, or `sinv name_object` or `destruct (invproxy name_object)` in interactive mode.
+## Using small inversions in definition mode and in interactive proof mode
+Once you've generated the partial inductive types and proxy, it is possible invert an object of the inductive type by either "`match invproxy name_object with`" in a definition body, or `sinv name_object` or `destruct (invproxy name_object)` in interactive mode.
 In the first case, you also need to know the constructors of the auxiliary inductive types generated, which can be obtained
 using the `Print` command.
 
@@ -136,43 +142,29 @@ Dependent inversion can be performed by respectively using `match dinvproxy name
 
 ## Making your development independent of the plugin (and MetaRocq)
 It is possible to keep using the generated terms and the `sinv` tactic without having the plugin installed.
-Basically, you only have to copy and paste the useful Rocq code generated by each `Derive InvProxy for SOMENAME`, taking care of the class mechanism.
-The "useful Rocq code" corresponds to the objects whose names are displayed by a `Derive InvProxy for SOMENAME` when you use `Unset Elimination Schemes`: the names of the partial inductive types and then the name of the proxy, typically `SOMENAME_proxy`.
+Basically, you only have to copy and paste the useful Rocq code generated by each `Derive InvProxy for `$~T$, taking care of the class mechanism.
+The "useful Rocq code" corresponds to the objects whose names are displayed by a `Derive InvProxy for `$~T$ when you use `Unset Elimination Schemes`: the names of the partial inductive types and then the name of the proxy, typically $~T$`_proxy`.
 First, display the code of each generated partial inductive type using `Print` and copy-paste the result in your source file without change.
-Next, display the code of the proxy using `Print SOMENAME_proxy.`, resulting in something like
+Next, display the code of the proxy using `Print `$~T$`_proxy.`, resulting in something like
+
 ```coq
-SOMENAME_proxy =
+T_proxy =
 fun ... =>
 {|
   proxy_type := bbb...;
   invproxy := ccc...
 |}
-     : forall (ddd...), Proxy (SOMENAME aaa...)
+     : forall (ddd...), Proxy (T aaa...)
 ```
-Note that in the last line, the parentheses around `ddd...` may be missing if there is only one variable.
+In the last line, the parentheses around `ddd...` may be missing if there is only one variable.
 Then by copy-paste and small adjustments, make it an instance of the class `Proxy` along the following scheme:
 ```coq
-Instance SOMENAME_proxy (ddd...) : Proxy (SOMENAME aaa...) :=
+Instance T_proxy (ddd...) : Proxy (T aaa...) :=
 {|
   proxy_type := bbb...;
   invproxy := ccc...
 |}.
 ```
-
-In other words (see also the example below):
-
-* on the first line, 
-  + add `Instance` at the beginning; 
-  + after `SOMENAME_proxy`, insert the text of the last line after the `forall`, that is, `(ddd...) : Proxy (SOMENAME aaa...)`;
-  the comma just before `Proxy` is replaced by a colon;
-  + end the line by `:=` instead of `=`;
-* remove the second line;
-* add a period after `|}` in the penultimate line;
-* remove the last line.
-
-Then, in your source file, remove the `Derive InvProxy for SOMENAME` commands,
-replace `Require Import small_inversion` by `Require Import typeclass`, 
-and add the file [`typeclass.v`](./SmallInversion/typeclass.v) in your project (18loc).
 
 ### Example
 In the case of inversion for the [Fin.t](https://github.com/rocq-prover/stdlib/blob/master/theories/Vectors/Fin.v) inductive type, the commands
@@ -240,5 +232,16 @@ Instance t_proxy (_nat2 : nat) : Proxy (t _nat2) :=
 ```
 
 Then, in your source file, remove the `Derive InvProxy for t`,
-replace `Require Import small_inversion` by `Require Import typeclass`, 
+replace `Require Import small_inversion` by `Require Import typeclass`,
 and add the file [`typeclass.v`](./SmallInversion/typeclass.v) in your project.
+
+Detailed algorithm:
+
+* on the first line,
+  + add `Instance` at the beginning;
+  + after $~T$`_proxy`, insert the text of the last line after the `forall`, that is, `(ddd...) : Proxy (`$~T~$` aaa...)`;
+  the comma just before `Proxy` is replaced by a colon;
+  + end the line by "`:=`" instead of "`=`";
+* remove the second line;
+* add a period after `|}` in the penultimate line;
+* remove the last line.
