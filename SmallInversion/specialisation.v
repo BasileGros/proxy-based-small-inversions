@@ -8,7 +8,7 @@ From SmallInversion Require Import derecursivation.
 
 (*A data type that stores the form of the call for the pilot inductive
  in a given constructor*)
-Inductive ref_pilot :=
+Variant ref_pilot :=
 (*A constructor applied to some arguments in the form of de Bruijn indexes*)
 |application : nat (*The id of the constructor*) ->
                list term (*its parameters, included in the next list but separated for ease of use*) ->
@@ -18,8 +18,7 @@ Inductive ref_pilot :=
 |variable : nat (*The value of the de Bruijn*) ->
             nat (*The position of the variable in the telescope*) ->
             list term (*The parameters in its type*) ->
-            ref_pilot
-.
+            ref_pilot.
 
 
 (*Stores the relation that a constructor of the pilot is present
@@ -281,10 +280,10 @@ Fixpoint aux_form_ref_info
              new_acc_R new_acc_P
 
         |_   =>
-           Error (
-               "data_extraction.form_pilot_ref_info : " ^
-                 "Call to the pilot not an inductive or a variable in constructor number " ^
-                   (string_of_nat position_constructor_R) ^ " of the relation")
+          Error (
+              "data_extraction.form_pilot_ref_info : " ^
+                "Call to the pilot not an inductive or a variable in constructor number " ^
+                  (string_of_nat position_constructor_R) ^ " of the relation")
         end
 
      |None      =>  Error (
@@ -324,16 +323,22 @@ Definition extraction_inductive_pilot (poib : pseudo_oib) (position_pilot:nat):
             " does not have an index at position " ^ (string_of_nat position_pilot))
   end.
 
+Inductive result_check : Set := |all_variables |problem : nat -> result_check |can_specialise.
+
 (*Checks if at least one value of the index has the form of a constructor*)
-Fixpoint check_ref_info  (l : list (nat * list reference_info) ):=
+Fixpoint check_ref_info  (l : list (nat * list reference_info) ) : result_check :=
   match l with
-  |[] => false
-  |(_,ref)::tl =>
+  |[] => all_variables
+  |(n,ref)::tl =>
      match nth_error ref 0 with
-     |None => false
+     |None => problem n
      |Some r =>
         match reference_pilot r with
-        |application _ _ _ => true
+        |application _ _ _ =>
+           match check_ref_info tl with
+           |all_variables | can_specialise => can_specialise
+           |problem m => problem m
+           end
         |variable _ _ _ => check_ref_info tl
         end
      end
@@ -346,8 +351,8 @@ Definition check_spec_info (spec_info : specialisation_info)
   match indices_P spec_info with
   |_::_ => Error "Pilot index is dependent"
   |[] =>
-     if check_ref_info (list_ref_R spec_info)
-     then
+     match check_ref_info (list_ref_R spec_info) with
+     |can_specialise =>
        if isdep (transfo_info_spec spec_info)
        then
          if  (nb_indices_R spec_info) - (position_pilot spec_info + 1) =? 0
@@ -357,7 +362,9 @@ Definition check_spec_info (spec_info : specialisation_info)
            Success spec_info
        else
          Success spec_info
-     else Error "Pilot index is only instanciated by variables"
+     |all_variables => Error "Pilot index is only instanciated by variables"
+     |problem n => Error ("A problem occured during the check of constructor number "^ (string_of_nat n))
+     end
   end.
 
 
@@ -390,7 +397,7 @@ Definition data_extraction_spec
   let list_constructors_R := lctors transfo_info in
   
   term_P <-? extraction_inductive_pilot poib_R position_pilot ;;
-  '(inductive_P,parametres_P,tInd_P) <-? app_inductive_from_term term_P ;;
+  '(inductive_P,params_indices_P,tInd_P) <-? app_inductive_from_term term_P ;;
   '(mib_P, index_P) <-? mib_index_from_env tInd_P (env_quote transfo_info) ;;
   let telescope_oib_P :=
     create_telescope_letin_mutual_inductive inductive_P (length mib_P.(ind_bodies))
@@ -399,6 +406,7 @@ Definition data_extraction_spec
   let nb_oib_P  := length mib_P.(ind_bodies) in
   
   temp_oib_P <-? one_inductive_body_from_mib mib_P index_P ;;
+  
   let transfo_info_P :=
     {|
       inductive_transfo := inductive_P;
@@ -418,14 +426,15 @@ Definition data_extraction_spec
       isdep := isdep transfo_info;
     |}
   in
+
+  let '(parametres_P, indices_P) := firstn_lastn params_indices_P mib_P.(ind_npars) in
   let derec_transfo_P := full_derecursivation_mib transfo_info_P parametres_P telescope_oib_P in
   
-  lists <-? form_ref_info
+  '(list_ref_R,list_ref_P) <-? form_ref_info
     position_pilot (concat_options (lctors derec_transfo_P))
     (mib_P.(ind_npars)) list_constructors_R
     (length (concat_options (lctors derec_transfo_P))) 0
     poib_R.(pseudo_name) ;;
-  let (list_ref_R,list_ref_P) := lists in
   let name_disp := (name_og_inductive transfo_info) ^ "_dispatch" in
   let spec_info :=
     {|
@@ -462,6 +471,7 @@ Definition data_extraction_spec
       og_transfo_info_P := transfo_info_P;
     |}
   in
+
   if is_forced then
     check_spec_info_novar spec_info
   else
@@ -583,8 +593,7 @@ Definition partial_inductive_constructor
     cstr_type :=  new_type;
     cstr_arity :=  new_arity;
 
-  |}
-.
+  |}.
 
 
 
@@ -784,7 +793,14 @@ so taking into account the parameters of Relation*)
   let new_indices :=
     telescope_to_args new_type 0 (nb_indices_R spec_info + (length constructor_P.(cstr_args)) -1)
   in
-  let new_pmib := pmib_R spec_info in
+  let new_pmib :=
+    {|
+      pseudo_finite := BiFinite;
+      pseudo_npars := 0;
+      pseudo_params := [];
+      pseudo_universes := (pmib_R spec_info).(pseudo_universes);
+      pseudo_variance :=  (pmib_R spec_info).(pseudo_variance);
+      |}  in
   let new_poib :=
     {|
       pseudo_name := new_name;
@@ -1046,7 +1062,7 @@ Definition create_inversion_submatch
   let deBruijns_for_let_in := deBruijn_args_before_variable ++ [deBruijn_variable_match] in
   (*let x(i,k<θ)' := x(i,k<θ) in let x(i,θ)' := xθ in ...*)
   let let_in_args_before_variable :=
-    context_into_letin (firstn (position_variable + 1) rev_args) deBruijns_for_let_in
+    context_to_letin (firstn (position_variable + 1) rev_args) deBruijns_for_let_in
   in
   let list_lifted_params := map (lift0 (deBruijn_variable + 1)) list_params in
   let concl_return :=

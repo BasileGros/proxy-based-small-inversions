@@ -26,11 +26,11 @@ Definition proxy_adapter_identity
 
   (*Appending the lambdas for arguments, parameters, constructor, and type *)
   let env := (env_quote transfo_info) in
-  let lamda_args :=
+  let lambda_args :=
     append_context_vars_lambda env named_args call_constructor
   in
   let lambda_params := 
-    append_context_vars_lambda env named_params lamda_args
+    append_context_vars_lambda env named_params lambda_args
   in
   let lambda_cons :=
     append_context_vars_lambda env ctx_constructor lambda_params

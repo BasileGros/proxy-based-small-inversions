@@ -6,12 +6,11 @@ Class dInvProxy (T:Type) := { dinvproxy_type: T -> Type; dinvproxy: forall t:T, 
 
 
 (** ** Algebraic variant *)
-
-#[global] Tactic Notation "sinv" constr(p) :=
+Tactic Notation "sinv" constr(p) :=
   (destruct (invproxy p)).
-#[global] Tactic Notation "sinv" constr(p) "as" simple_intropattern(pat) :=
+Tactic Notation "sinv" constr(p) "as" simple_intropattern(pat) :=
   ( destruct (invproxy p) as pat).
-#[global] Tactic Notation "sdinv" constr(p) :=
+Tactic Notation "sdinv" constr(p) :=
   (destruct (dinvproxy p)).
-#[global] Tactic Notation "sdinv" constr(p) "as" simple_intropattern(pat) :=
+Tactic Notation "sdinv" constr(p) "as" simple_intropattern(pat) :=
   (destruct (dinvproxy p) as pat).

@@ -123,7 +123,7 @@ Definition first_parameterisable_index_oib
   let telescope_without_params := peel_telescope poib.(pseudo_type) nb_params in
   first_parameterisable_list_index telescope_without_params lctors 0.
 
-(** * Parameterising an inductive for a given index. *)
+(** * Parameterising an inductive type for a given index. *)
 (** Changing the positions of the index being parameterised
  to be with the other parameters at the beginning of the telescope*)
 
@@ -288,7 +288,6 @@ Definition parameterise_inductive_error (transfo_info : transformation_info)
       new_poib, param_lctors, list_pos, list_args).
 
 
-
 (** * Creating the proxy type adapter and the proxy adapters.*)
 
 (*Change the type of the constructor to move the new parameter *)
@@ -299,26 +298,30 @@ Definition change_type_call_constr
   (nb_old_params : nat)
   (name_disp : string)
   : term :=
+
+  (*var_inductive type_repar (tVar name_disp)*)
   let peeled_type :=
     peel_telescope type nb_old_params
   in
+  (*Lift references to old params to take into account new params*)
+  let lift_type := lift0 (length list_args_repar) peeled_type in
+  let let_in_type :=
+    insertion_list_letin_position lift_type list_args_repar
+  in
+ (*The type of the constructor in parameter*)
+  let disp_type := var_inductive let_in_type (tVar name_disp) in
+  
   let (insert_params, _) :=
     cut_telescope type_repar (length list_args_repar + nb_old_params)
   in
-  let let_in_type :=
-    insertion_list_letin_position peeled_type list_args_repar
-  in
-  
- (*The type of the constructor in parameter*)
-  let disp_type := var_inductive let_in_type (tVar name_disp) in
   let insert_type := (insert_params disp_type) in
   let new_type := remove_let_in insert_type [] in
   (*let disp_type := var_inductive type_repar (tVar name_disp) in
   let new_type := remove_let_in disp_type [] in*)
   (*let l:= map (fun n => tVar (string_of_nat n)) list_args_repar in
 tApp (tVar name_disp) l*)
-  new_type
-.
+  insert_type.
+
   
 Fixpoint pos_arg (rel_pos_arg : nat) (acc : nat) (list_acc : list bool) :=
   match list_acc, rel_pos_arg with
@@ -344,6 +347,24 @@ Fixpoint list_pos_arg (list_rel_pos_args : list nat)(list_acc : list bool):=
 Definition list_pos_args (list_rel_pos_args : list nat)(nb_args : nat) :=
   list_pos_arg list_rel_pos_args (list_const false nb_args).
 
+
+
+Unset Guard Checking.
+
+Fixpoint increment_elements_list (l : list nat) :=
+  match l with
+  |[] => []
+  |hd::tl =>
+     let f := (fun n => if Nat.leb hd n then (S n) else n) in
+     let new_tl := increment_elements_list (map f tl) in
+     hd::new_tl
+  end.
+Set Guard Checking.
+
+
+Definition adjust_list_pos_args (list_rel_pos_args : list nat) :=
+  rev (increment_elements_list (rev list_rel_pos_args)).
+
 (*Creation of the proxy adapter for a constructor of the inductive to parameterise*)
 Definition proxy_constructor_reparam
   (old_params : context) (decl_disp : context_decl)
@@ -355,16 +376,19 @@ Definition proxy_constructor_reparam
   (list_args_repar : list nat)
   :=
 
-  list_position_args <-? list_pos_args list_args_repar constructor_init.(cstr_arity);;
+  (*list_position_args <-? list_pos_args  list_args_repar constructor_init.(cstr_arity);;*)
   
+  let list_position_args_adjusted := adjust_list_pos_args list_args_repar in
   let named_args := name_context constructor_init.(cstr_args) (offset+ 1) in
   
   (*Create the variable calls to refer to the parameters and indices of the inductive.*)
   let calls_old_args := context_to_call named_args in
   
   let (calls_new_args, calls_opt_new_params) :=
-    separate_list (calls_old_args,[]) list_position_args (length list_args_repar)
+    separate_list (calls_old_args,[]) (rev list_position_args_adjusted) (length list_args_repar)
   in
+
+  
 
   let type_call_constr := 
     (*(constructor_repar.(cstr_type)) in*)
@@ -372,7 +396,7 @@ Definition proxy_constructor_reparam
     change_type_call_constr
       (constructor_init.(cstr_type))
       (constructor_repar.(cstr_type))
-      (list_position_args) (*list_args_repar*)
+      (list_position_args_adjusted) (*list_args_repar*)
       (length old_params)
       name_disp
   in
@@ -407,7 +431,7 @@ Definition proxy_type_reparam
  
 
 
-  let l := mapi (fun i l => tApp (tVar (string_of_nat i)) (map (fun n => tVar (string_of_nat n)) l)) lists_args_reparam in
+  (*let l := mapi (fun i l => tApp (tVar (string_of_nat i)) (map (fun n => tVar (string_of_nat n)) l)) lists_args_reparam in*)
   
   let name_type := "_"^(poib_repar).(pseudo_name)^"_reparam" in
   let decl_type :=
@@ -457,6 +481,12 @@ Definition proxy_type_reparam
          (string_to_aname name_disp)
          (derec_poib).(pseudo_type)
      in
+     (*
+     let decl_disp_reparam :=
+       vass
+         (string_to_aname name_disp)
+         poib_repar.(pseudo_type)
+     in*)
 
      
      match list_isparam with
