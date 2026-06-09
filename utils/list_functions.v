@@ -205,8 +205,8 @@ Fixpoint get_vertical_slice
   |[] => (acc, lacc)
   |[]::t => (acc, lacc)
   |(h1::t1)::t2 =>
-     let new_acc := (*sorting_insert h1 acc*) h1::acc in
-     get_vertical_slice t2 new_acc (t1::lacc)
+     let new_acc := (*sorting_insert h1 acc*) acc++[h1] in
+     get_vertical_slice t2 new_acc (lacc++[t1])
   end.
 
 Fixpoint get_vertical_slices
@@ -306,4 +306,11 @@ Fixpoint remove_index_replace_by_list{A} (l  : list A ) (index : nat)(replace_li
   |[], _ => l
   |t::q, 0 => replace_list ++ q
   |t::q, S n => t::(remove_index_replace_by_list q n replace_list)
+  end.
+
+Fixpoint remove_index_replace_by_index{A} (l  : list A ) (index : nat)(replace_index : A) :=
+  match l, index with
+  |[], _ => l
+  |t::q, 0 => replace_index :: q
+  |t::q, S n => t::(remove_index_replace_by_index q n replace_index)
   end.

@@ -9,12 +9,12 @@ Notation nameAnon := {| binder_name := nAnon; binder_relevance := Relevant |}.
 
 (*Extracts the list of indices
 from the conclusion of a constructor's type telescope*)
-Fixpoint telescope_to_indices (t:term) (nb_args : nat) : list term :=
+Fixpoint telescope_to_indices (t:term) (nb_params : nat) : list term :=
   match t with
-  | tProd _ _ cont => telescope_to_indices cont nb_args
-  | tLambda _ _ cont => telescope_to_indices cont nb_args
-  | tLetIn _ _ _ cont  => telescope_to_indices cont nb_args
-  | tApp _ l => without_firstn l nb_args
+  | tProd _ _ cont => telescope_to_indices cont nb_params
+  | tLambda _ _ cont => telescope_to_indices cont nb_params
+  | tLetIn _ _ _ cont  => telescope_to_indices cont nb_params
+  | tApp _ l => without_firstn l nb_params
   | _ => []
   end.
 
@@ -27,6 +27,15 @@ Fixpoint insert_new_concl_telescope (t:term) (new_concl : list term) : term :=
   | _ => t
   end.
 
+Fixpoint insert_new_concl_and_lift (t:term) (n_lift : nat) (new_concl : list term) : term :=
+  match t with
+  | tProd na t cont => tProd na t (insert_new_concl_and_lift cont n_lift new_concl)
+  | tLambda na t cont => tLambda na t (insert_new_concl_and_lift cont n_lift new_concl)
+  | tLetIn na t v cont  => tLetIn na t v (insert_new_concl_and_lift cont n_lift new_concl)
+  | tApp t _ => tApp (lift0 n_lift t) new_concl
+  | _ => t
+  end.
+
 Fixpoint add_to_concl_telescope (t:term) (new_concl : list term) : term :=
   match t with
   | tProd na t cont => tProd na t (add_to_concl_telescope cont new_concl)
@@ -35,8 +44,6 @@ Fixpoint add_to_concl_telescope (t:term) (new_concl : list term) : term :=
   | tApp t l => tApp t (l++new_concl)
   | _ => t
   end.
-
-
 
 (*Removes the first n elements in a type telescope*)
 Fixpoint peel_telescope (t:term) (n:nat) : term :=
@@ -317,18 +324,6 @@ Fixpoint first_n_tProds_into_lambda (t:term) (nb_keep:nat) : term -> term :=
   |_,_ => fun x => x
   end.
 
-(*Does the same thing but for a list of parameters*)
-Fixpoint context_into_letin
-  (list_params : context) (list_values : list term)
-  : term -> term :=
-  match list_params, list_values with
-  |[], _ => fun x => x
-  |_, [] => fun x => x
-  |decl::t,val::t_val =>
-     fun x =>
-       tLetIn decl.(decl_name) val decl.(decl_type) (context_into_letin t t_val x)
-  end
-.
 
 
 Fixpoint create_anon_context (n:nat) : list aname :=
@@ -386,48 +381,36 @@ Definition rename_inductive (prefix : string)(suffix : string)(ind : inductive)
     inductive_ind := ind.(inductive_ind)
   |}.
 
-(*Change a prod into a letin at the position given.*)
-Fixpoint insert_letin_position
-  (telescope : term)
-  (position : nat)
-  (dB : nat)(depth : nat)
-  : term := 
-  match telescope with
-  |tProd na t b =>
-        if depth =? position
-        then tLetIn na (tRel dB) t
-               (insert_letin_position
-                  b position (dB) (S depth)
-               )
-        else tProd na t
-               (insert_letin_position
-                  b position (S dB) (S depth)
-               )
 
-  |tLetIn na v t b => tLetIn na v t (insert_letin_position
-                  b position (S dB) (S depth)
-               )
-  |_ => telescope
+
+Fixpoint insert_letin_position (telescope : term) (position dB depth : nat) {struct telescope} : term :=
+  match telescope with
+  | tProd na t b =>
+      if depth =? position
+      then tLetIn na (tRel dB) t b
+      else tProd na t (insert_letin_position b position dB (S depth))
+  | tLetIn na v t b => tLetIn na v t (insert_letin_position b position dB (S depth))
+  | _ => telescope
   end.
 
 Fixpoint insert_list_letin_position
   (telescope : term)
   (list_position : list nat)
-  (len_list : nat) (pos_param:nat)
   :=
   match list_position with
   | [] => telescope
   | hd::tl =>
       let new_tel :=
-        insert_letin_position telescope hd (len_list - pos_param - 1) 0
+        insert_letin_position telescope hd (hd + (length tl)) 0
       in
-      insert_list_letin_position new_tel tl len_list (S pos_param)
+      insert_list_letin_position new_tel tl
   end.
 
 Definition insertion_list_letin_position
   (telescope : term)
   (list_position : list nat) :=
-  insert_list_letin_position telescope list_position (length list_position) 0.
+  insert_list_letin_position telescope (rev list_position).
+
 
 Fixpoint list_term_to_letin (l : list term) :=
   match l with
