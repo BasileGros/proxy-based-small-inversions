@@ -10,4 +10,5 @@
 ./map3.v
 ./matrices.v
 ./next_color.v
+./sltc.v
 ./patterns.v
