@@ -10,5 +10,5 @@
 ./map3.v
 ./matrices.v
 ./next_color.v
-./sltc.v
+./stlc_Poulsen.v
 ./patterns.v
