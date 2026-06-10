@@ -21,9 +21,9 @@ Inductive vect (A : Type) : nat → Type :=
 
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for vect.
-(* vect_O vect_S *)
+(* vect_O vect_S vect_proxy *)
 Derive Dependent InvProxy for vect.
-(* vect_O_dep vect_S_dep *)
+(* vect_O_dep vect_S_dep vect_dproxy *)
 Set Elimination Schemes.
 
 Arguments cons {A} _ {n}.
@@ -34,10 +34,17 @@ Notation "x :: v" := (cons x v).
 Notation "[ x ]" := (cons x nil).
 Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)).
 
-(* ====================================================================== *)
-
 (* For convenient use of proxies in combination with the let construct *)
 Notation inv_vectS u := (invproxy u : vect_S _ _).
+Notation dinv_vectO u := (dinvproxy u : vect_O_dep _ _).
+Notation dinv_vectS u := (dinvproxy u : vect_S_dep _ _ _).
+
+Notation "'dinv_let' '()' := E 'in' F" :=
+  (let 'nil_O_dep _ := dinv_vectO E in F)  (at level 200).
+Notation "'dinv_let' ( A ,  B ) := E 'in' F" :=
+  (let 'cons_S_dep _ _ A B := dinv_vectS E in F)  (at level 200, A binder, B binder).
+
+(* ====================================================================== *)
 
 (* Recursion can be performed on the first vector *)
 Definition map2 {A B C : Type} (f : A → B → C) :
@@ -121,3 +128,21 @@ Lemma map3_special_case A (f : A → A → A → A) n u v w :
   - sdinv u as [x u']. sdinv v as [y v']. sdinv w as [z w'].
     cbn. f_equal. apply Hn.
 Qed.
+
+
+(* ====================================================================== *)
+
+
+(* A map2 function on vectors that remembers its inputs in its type *)
+Inductive Remap2 {C A B} : ∀ {n}, vect A n → vect B n → Type :=
+| Rmnil : Remap2 [] []
+| Rmcons {a b n} {aa : vect A n} {bb : vect B n} :
+  C → Remap2 aa bb → Remap2 (a :: aa) (b :: bb).
+Arguments Remap2 C {A B n} _ _.
+
+Fixpoint remap2 {A B C : Set} (f : A → B → C) {n} (u : vect A n) :
+  ∀ v : vect B n, Remap2 C u v :=
+  match u with
+  | []     => λ v, dinv_let () := v in Rmnil
+  | x :: u => λ v, dinv_let (y, v) := v in Rmcons (f x y) (remap2 f u v)
+  end.

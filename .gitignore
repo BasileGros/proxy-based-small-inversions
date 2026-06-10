@@ -1,0 +1,9 @@
+.*.aux
+*.vo*
+*.glob
+*.cm*
+*.o
+*.a
+*.d
+Makefile.rocq*
+.Makefile.rocq.d
