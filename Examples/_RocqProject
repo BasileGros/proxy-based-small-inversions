@@ -11,4 +11,5 @@
 ./matrices.v
 ./next_color.v
 ./stlc_Poulsen.v
+./stlc_viewleft_handcrafted.v
 ./patterns.v

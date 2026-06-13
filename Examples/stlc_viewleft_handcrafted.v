@@ -51,7 +51,7 @@ Definition Fin_proxy {n} (i: Fin n) : Fin_proxy_type n :=
   match i with bullet n => bullet_S n | up i => up_S _ i end.
 
 (* Dependent small inversion for Fin.
-   Turns out to be useful in the "find view below *)
+   Turns out to be useful in the find view below *)
 Variant Fin_dep_O : Fin O → Type := .
 Variant Fin_dep_S (n : nat) : Fin (S n) → Type :=
 | bullet_dep_S : Fin_dep_S n (bullet n)
