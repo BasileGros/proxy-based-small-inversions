@@ -13,3 +13,4 @@
 ./stlc_Poulsen.v
 ./stlc_viewleft_handcrafted.v
 ./patterns.v
+./remap2_handcrafted.v
