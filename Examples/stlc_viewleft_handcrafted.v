@@ -19,7 +19,7 @@ Import ListNotations.
    There is only one exception, in the "advanced example" presented at the end,
    dedicated to a type-checker for simply-typed lambda calculs (STLC),
    where *dependent* proxy-based small inversion (PBSI) turns out to be useful.
- 
+
    [viewleft04] uses only types that depend on the length of a list.
    We also experiment with vectors.
    PBSI is used only for 2 basic dependent data types : bounded natural numbers
@@ -123,7 +123,7 @@ Arguments eLam {n}.
 
 (* 7.1 The find view *)
 (* NB. x could be a parameter, but an index does not harm here. *)
-Inductive In {X : Type} : list X → X → Type := 
+Inductive In {X : Type} : list X → X → Type :=
 | Ibullet xs x : In (x :: xs) x
 | Iup xs x y (i : In xs y) : In (x :: xs) y.
 
@@ -192,7 +192,7 @@ Arguments vfound {X n xs}.
    (the type of the result depends on inputs) bu we have an additional possible
    encoding of the Epigram dependent pattern-matching used in the paper:
    we can start with a pattern-matchin on i, because its actual index
-   is a general n -- instead of the expression (len xs) 
+   is a general n -- instead of the expression (len xs)
 *)
 Fixpoint vfindi {X : Type} {n} (i : Fin n) : ∀ (xs : vect X n), vFind xs i :=
   match i with
@@ -445,9 +445,9 @@ Inductive Error (Γ : list TExp) : Type :=
 | er_mismatch {A B} (f' : Term Γ (arrow A B)) (N : Isnt A) (s' : Term Γ (backsl A N)) :
   Error Γ
 (*| er_appR_orig {A B} (f' : Term Γ (arrow A B)) (err : Error Γ) : Error Γ *)
-| er_appR (f : Expr (len Γ)) (err : Error Γ) : Error Γ 
-| er_appL (err : Error Γ) (s : Expr (len Γ)) : Error Γ 
-| er_lam T (err : Error (T :: Γ)) : Error Γ 
+| er_appR (f : Expr (len Γ)) (err : Error Γ) : Error Γ
+| er_appL (err : Error Γ) (s : Expr (len Γ)) : Error Γ
+| er_lam T (err : Error (T :: Γ)) : Error Γ
 .
 
 Fixpoint uExpr {Γ} (err : Error Γ) : Expr (len Γ) :=
@@ -503,9 +503,9 @@ Inductive vError {n} (Γ : vect TExp n) : Type :=
 | ver_mismatch {A B} (f' : vTerm Γ (arrow A B)) (N : Isnt A) (s' : vTerm Γ (backsl A N)) :
   vError Γ
 (*| er_appR_orig {A B} (f' : Term Γ (arrow A B)) (err : vError Γ) : vError Γ *)
-| ver_appR (f : Expr n) (err : vError Γ) : vError Γ 
-| ver_appL (err : vError Γ) (s : Expr n) : vError Γ 
-| ver_lam T (err : vError (T ::: Γ)) : vError Γ 
+| ver_appR (f : Expr n) (err : vError Γ) : vError Γ
+| ver_appL (err : vError Γ) (s : Expr n) : vError Γ
+| ver_lam T (err : vError (T ::: Γ)) : vError Γ
 .
 
 Fixpoint uvExpr {n} {Γ : vect TExp n} (err : vError Γ) : Expr n :=
@@ -573,9 +573,9 @@ Inductive vError {n} (Γ : vect TExp n) : Type :=
 | ver_mismatch {A B} (f' : vTerm Γ (arrow A B)) (N : Isnt A) (s' : vTerm Γ (backsl A N)) :
   vError Γ
 (*| er_appR_orig {A B} (f' : Term Γ (arrow A B)) (err : vError Γ) : vError Γ *)
-| ver_appR (f : iExpr n) (err : vError Γ) : vError Γ 
-| ver_appL (err : vError Γ) (s : iExpr n) : vError Γ 
-| ver_lam T (err : vError (T ::: Γ)) : vError Γ 
+| ver_appR (f : iExpr n) (err : vError Γ) : vError Γ
+| ver_appL (err : vError Γ) (s : iExpr n) : vError Γ
+| ver_lam T (err : vError (T ::: Γ)) : vError Γ
 .
 
 Fixpoint uviExpr {n} {Γ : vect TExp n} (err : vError Γ) : iExpr n :=
