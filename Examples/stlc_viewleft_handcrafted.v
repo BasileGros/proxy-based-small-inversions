@@ -5,22 +5,42 @@ Import ListNotations.
 
 (* ====================================================================== *)
 (* The "extended example" developed in the last section of
-   "The view from the left", McBride & McKinna 2004        *)
+   "The view from the left", McBride & McKinna 2004,
+   refered to below as [viewleft04]
+   Among other things, this paper illustrates number of subtle points
+   on programming with dependent types.
+   The framework used is a type theory close to the one that is
+   implemented in Agda, with an advanced pattern-matching mechanism
+   based on first-order unification, that is more powerful than
+   the one available in CIC.
+   Surprinsigly, all examples presented in [viewleft04] can be reproduced
+   (without the specific syntax of the paper for views) in CIC without
+   special care.
+   There is only one exception, in the "advanced example" presented at the end,
+   dedicated to a type-checker for simply-typed lambda calculs (STLC),
+   where *dependent* proxy-based small inversion (PBSI) turns out to be useful.
+ 
+   [viewleft04] uses only types that depend on the length of a list.
+   We also experiment with vectors.
+   PBSI is used only for 2 basic dependent data types : bounded natural numbers
+   and vectors.  The other data structures of [viewleft04]are quite interesting
+   by themselves, but can be handled by ordinary CIC.
+ *)
 
-(* In the paper, we have only types that depend on the length of a list.
-   We also experiment with vectors, this turns out to be
-   instructive. *)
-
-(* NB. In this file, we can have Set everuwhare ina the place of Type *)
+(*  *)
 
 
-Inductive TExp : Type :=  o : TExp | arrow : TExp → TExp → TExp.
+(* NB. In this file, we can use Set everywhere in the place of Type *)
+
+(* ================================================================================== *)
+(* Bounded natural numbers, aka finite sets?
+   Constructors refer to the notation of [viewleft04] *)
 
 Inductive Fin : nat → Type :=
 | bullet n : Fin (S n)
 | up {n} (i : Fin n) : Fin (S n).
 
-(* Small inversion for Fin *)
+(* PBSI for Fin *)
 Variant Fin_O : Type := .
 Variant Fin_S (n : nat) : Type :=
 | bullet_S : Fin_S n
@@ -40,7 +60,57 @@ Definition Fin_proxy_type_dep (n : nat) : Fin n → Type :=
   match n with O => Fin_dep_O | S n => Fin_dep_S n end.
 Definition Fin_proxy_dep {n} (i: Fin n) : Fin_proxy_type_dep n i :=
   match i with bullet n => bullet_dep_S n | up i => up_dep_S _ i end.
-  
+
+(* -------------------------------------------------- *)
+
+Inductive vect (X : Type) : nat → Type :=
+| vnil : vect X O
+| vcons n : X → vect X n → vect X (S n).
+Arguments vnil {X}.
+Arguments vcons {X n}.
+
+(* As we have lists in the file, we introduce a specific notation for vectors *)
+Notation "[< >]" := (vnil) (format "[< >]").
+Notation "x ::: v" := (vcons x v) (at level 60).
+Notation "[< x >]" := (vcons x vnil).
+Notation "[< x ; y ; .. ; z >]" :=  (vcons x (vcons y .. (vcons z vnil) ..)).
+
+(* PBSI for vect *)
+Variant vect_O (A : Type) : Type :=  vnil_O : vect_O A.
+Variant vect_S (A : Type) (n : nat) : Type :=  vcons_S : A → vect A n → vect_S A n.
+Arguments vnil_O {A}.
+Arguments vcons_S {A n} _.
+
+Definition sinv_vect_type A n : Type :=
+  match n with  O => vect_O A  |  S n => vect_S A n  end.
+
+Definition sinv_vect {A n} (u : vect A n) : sinv_vect_type A n :=
+  match u with  vnil => vnil_O  |  vcons x u => vcons_S x u  end.
+
+Variant vect_O_dep A : vect A 0 -> Type :=
+  vnil_O_dep : vect_O_dep A vnil.
+Variant vect_S_dep A n : vect A (S n) -> Type :=
+  vcons_S_dep x u : vect_S_dep A n (vcons x u).
+Arguments vnil_O_dep {A}.
+Arguments vcons_S_dep {A n} _.
+
+Definition sdinv_vect_type A n : vect A n -> Type :=
+  match n with  O => vect_O_dep A  |  S n => vect_S_dep A n  end.
+
+Definition sdinv_vect {A n} (u : vect A n) : sdinv_vect_type A n u :=
+  match u with  vnil => vnil_O_dep  |  vcons x u => vcons_S_dep x u  end.
+
+(* Convenient notations for (CIC dependent) let expressions *)
+Notation "'let_vnil' '()' := E 'in' F" :=
+  (let 'vnil_O_dep := E in F)  (at level 200).
+Notation "'let_vcons' ( A ,  B ) := E 'in' F" :=
+  (let 'vcons_S_dep A B := E in F)  (at level 200, A binder, B binder).
+
+(* ================================================================================== *)
+(* Section 7 of [viewleft04] *)
+
+(* Internalized simple types *)
+Inductive TExp : Type :=  o : TExp | arrow : TExp → TExp → TExp.
 
 (* pre-terms = well-indexed -- not necessarily well-typed --  expressions *)
 Inductive Expr (n : nat) : Type :=
@@ -90,48 +160,6 @@ Fixpoint find {X : Type} (xs : list X) : ∀ i : Fin (len xs), Find xs i :=
 
 (* ---------------------------------------------------------------------- *)
 (* Alternately, we can use vectors (not in the paper [viewleft04]  *)
-Inductive vect (X : Type) : nat → Type :=
-| vnil : vect X O
-| vcons n : X → vect X n → vect X (S n).
-Arguments vnil {X}.
-Arguments vcons {X n}.
-
-(* As we have lists in thes file, we introduce a specific notation for vectors *)
-Notation "[< >]" := (vnil) (format "[< >]").
-Notation "x ::: v" := (vcons x v) (at level 60).
-Notation "[< x >]" := (vcons x vnil).
-Notation "[< x ; y ; .. ; z >]" :=  (vcons x (vcons y .. (vcons z vnil) ..)).
-
-(* Small inversions *)
-Variant vect_O (A : Type) : Type :=  vnil_O : vect_O A.
-Variant vect_S (A : Type) (n : nat) : Type :=  vcons_S : A → vect A n → vect_S A n.
-Arguments vnil_O {A}.
-Arguments vcons_S {A n} _.
-
-Definition sinv_vect_type A n : Type :=
-  match n with  O => vect_O A  |  S n => vect_S A n  end.
-
-Definition sinv_vect {A n} (u : vect A n) : sinv_vect_type A n :=
-  match u with  vnil => vnil_O  |  vcons x u => vcons_S x u  end.
-
-Variant vect_O_dep A : vect A 0 -> Type :=
-  vnil_O_dep : vect_O_dep A vnil.
-Variant vect_S_dep A n : vect A (S n) -> Type :=
-  vcons_S_dep x u : vect_S_dep A n (vcons x u).
-Arguments vnil_O_dep {A}.
-Arguments vcons_S_dep {A n} _.
-
-Definition sdinv_vect_type A n : vect A n -> Type :=
-  match n with  O => vect_O_dep A  |  S n => vect_S_dep A n  end.
-
-Definition sdinv_vect {A n} (u : vect A n) : sdinv_vect_type A n u :=
-  match u with  vnil => vnil_O_dep  |  vcons x u => vcons_S_dep x u  end.
-
-Notation "'let_vnil' '()' := E 'in' F" :=  (let 'vnil_O_dep := E in F)  (at level 200).
-Notation "'let_vcons' ( A ,  B ) := E 'in' F" :=
-  (let 'vcons_S_dep A B := E in F)  (at level 200, A binder, B binder).
-
-(* ----------------------------------------------------------- *)
 
 (* Function of [viewleft04] defined using vectors *)
 Fixpoint vlist {X n} (v : vect X n) : list X :=
