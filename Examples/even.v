@@ -4,6 +4,7 @@ Inductive even : nat -> Prop :=
 | even0 :  even 0
 | evenSS : forall (n : nat), even n -> even (S (S n)).
 
+(* Handcrafted small inversions *)
 Inductive even_O : Prop :=
 | is_even0 : even_O.
 
@@ -12,38 +13,45 @@ Inductive even_S : nat -> Prop :=
 
 Inductive even_SO : Prop :=.
 
-Inductive even_SS : nat -> Prop :=
-| is_evenSS : forall (n:nat), even n -> even_SS n.
+Inductive even_SS_VIR : nat -> Prop :=
+| is_evenSS' : forall (n:nat), even n -> even_SS_VIR n.
 
-Definition even__proxy_type (n : nat) : Prop :=
+Inductive even_SS (n : nat) : Prop :=
+| is_evenSS : even n -> even_SS n.
+
+Definition even_proxy_type (n : nat) : Prop :=
   match n with
-  |0 => even_O
-  |S 0 => even_SO
-  |S (S n) => even_SS n
+  | 0 => even_O
+  | S 0 => even_SO
+  | S (S n) => even_SS n
   end.
 
-Definition even__proxy (n : nat) (r : even n) :=
-  match r in even n' return even__proxy_type n' with
-  |even0 => is_even0
-  |evenSS n r => is_evenSS n r
+Definition even_proxy (n : nat) (r : even n) :=
+  match r in even n' return even_proxy_type n' with
+  | even0 => is_even0
+  | evenSS n r => is_evenSS n r
   end.
 
+(* *)
+
+(* Use case *)
 Lemma add_2_even (n:nat) : even (2 + n) -> even n.
 Proof.
-  intro H.
-  destruct (even__proxy _ H).
-  exact H0.
+  intro e.
+  destruct (even_proxy _ e) as [en].
+  exact en.
   Show Proof.
-  Qed.
+Qed.
 
+Fail Derive InvProxy for even.
+(* prefix to avoid name collision *)
 Derive InvProxy for even with prefix "_".
-
 
 Lemma add_2_even' (n:nat) : even (2 + n) -> even n.
 Proof.
-  intro H.
-  inv H.
-  exact H0.
+  intro e.
+  sinv e as [en].
+  exact en.
 Show Proof.
 Qed.
 
