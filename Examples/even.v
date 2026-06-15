@@ -1,4 +1,3 @@
-From Examples Require Import examples_header.
 
 Inductive even : nat -> Prop :=
 | even0 :  even 0
@@ -12,9 +11,6 @@ Inductive even_S : nat -> Prop :=
 | evenSS_S : forall (n:nat), even n -> even_S (S n).
 
 Inductive even_SO : Prop :=.
-
-Inductive even_SS_VIR : nat -> Prop :=
-| is_evenSS' : forall (n:nat), even n -> even_SS_VIR n.
 
 Inductive even_SS (n : nat) : Prop :=
 | is_evenSS : even n -> even_SS n.
@@ -42,6 +38,9 @@ Proof.
   exact en.
   Show Proof.
 Qed.
+
+(* Automated small inversions *)
+From Examples Require Import examples_header.
 
 Fail Derive InvProxy for even.
 (* prefix to avoid name collision *)
