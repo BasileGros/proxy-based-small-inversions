@@ -62,7 +62,7 @@ Proof.
 Defined.
 Print Fin_3_rect_autoscript.
 
-Fail Definition Fin_3_rect_auto
+Fail Definition Fin_3_rect_autosmall
   (P : Fin.t 3 -> Type)
   (p1 : P F1)
   (p2 :  P (FS F1))
@@ -91,7 +91,7 @@ Fail Definition Fin_3_rect_auto
   end.
 
 (* After obvious simplication, renaming and repair of a slight oversight *)
-Definition Fin_3_rect_auto
+Definition Fin_3_rect_autosmall
   (P : Fin.t 3 -> Type)
   (p1 : P F1)
   (p2 :  P (FS F1))

@@ -50,7 +50,16 @@ Fixpoint map2 {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   vect B n → vect C n :=
   match u with
   | []     => λ v, []
-  | x :: u => λ v, let_cons (y, v) := sdinv_vect v in f x y :: map2 f u v
+  | x :: u => λ v, let '(cons_S y v) := sinv_vect v in f x y :: map2 f u v
+  end.
+
+(*For non-dependent inversion, the notation "let (y,v) := sinv_vect v in" is also possible*)
+
+Fixpoint map2' {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
+  vect B n → vect C n :=
+  match u with
+  | []     => λ v, []
+  | x :: u => λ v, let (y,v) := sinv_vect v in f x y :: map2' f u v
   end.
 
 (* A map2 function on vectors that remembers its inputs in its type *)
@@ -63,6 +72,6 @@ Arguments Remap2 C {A B n} _ _.
 Fixpoint remap2 {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   ∀ v : vect B n, Remap2 C u v :=
   match u with
-  | []     => λ v, let_nil () := sdinv_vect v in Rmnil
-  | x :: u => λ v, let_cons (y, v) := sdinv_vect v in Rmcons (f x y) (remap2 f u v)
+  | []     => λ v, let 'nil_O_dep := sdinv_vect v in Rmnil
+  | x :: u => λ v, let '(cons_S_dep y v) := sdinv_vect v in Rmcons (f x y) (remap2 f u v)
   end.
