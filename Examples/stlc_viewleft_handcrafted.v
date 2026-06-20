@@ -210,7 +210,7 @@ Fixpoint vfind {X : Type} {n} (xs : vect X n) : ∀ i : Fin n, vFind xs i :=
       match Fin_proxy_dep i with
       | bullet_dep_S _ => vfound x (vIbullet xs x)
       | up_dep_S _ i =>
-          let 'vfound y iy := vfindi i xs in vfound y (vIup xs x y iy)
+          let 'vfound y iy := vfind xs i in vfound y (vIup xs x y iy)
       end
   end.
 

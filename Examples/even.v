@@ -1,31 +1,31 @@
 
 Inductive even : nat -> Prop :=
 | even0 :  even 0
-| evenSS : forall (n : nat), even n -> even (S (S n)).
+| even2 : forall (n : nat), even n -> even (S (S n)).
 
 (* Handcrafted small inversions *)
 Inductive even_O : Prop :=
 | is_even0 : even_O.
 
 Inductive even_S : nat -> Prop :=
-| evenSS_S : forall (n:nat), even n -> even_S (S n).
+| even2_S : forall (n:nat), even n -> even_S (S n).
 
 Inductive even_SO : Prop :=.
 
-Inductive even_SS (n : nat) : Prop :=
-| is_evenSS : even n -> even_SS n.
+Inductive even_S_S (n : nat) : Prop :=
+| is_even2 : even n -> even_S_S n.
 
 Definition even_proxy_type (n : nat) : Prop :=
   match n with
   | 0 => even_O
   | S 0 => even_SO
-  | S (S n) => even_SS n
+  | S (S n) => even_S_S n
   end.
 
 Definition even_proxy (n : nat) (r : even n) :=
   match r in even n' return even_proxy_type n' with
   | even0 => is_even0
-  | evenSS n r => is_evenSS n r
+  | even2 n r => is_even2 n r
   end.
 
 (* *)

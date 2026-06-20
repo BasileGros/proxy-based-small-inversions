@@ -9,7 +9,21 @@ From Examples Require Import examples_header.
    and returning a vector of size n.
 
 We provide here simple definitions using small inversion
-and a possible generalisation to m-ary functions. *)
+and a possible generalisation to m-ary functions.
+
+The end of the file contains related additional material.
+- A version of map2 whose results depends on
+  the two vectors in input, in order to illustrate
+  dependent proxy-based small inversions.
+- A version of map2 defined on co-inductive vectors
+  indexed by co-inductive natural numbers using
+  exactly the same algorithm.
+  Approaches a la Agda based on first-order unification
+  (including the Equations plugin) fail to support this,
+  because their pattern-matching mechanism integrates the
+  occur-check, compromising the separation of concerns
+  between pattern-matching and induction.
+*)
 
 (* In order to allow ∀ and λ notations *)
 From Stdlib Require Import Utf8.
@@ -49,8 +63,8 @@ Notation "'dinv_let' ( A ,  B ) := E 'in' F" :=
 (* Recursion can be performed on the first vector *)
 Definition map2 {A B C : Type} (f : A → B → C) :
   ∀ n, vect A n → vect B n → vect C n :=
-  fix loop _ (u : vect A _) :=
-    match u in vect _ nn return vect B nn → vect C nn with
+  fix loop n (u : vect A n) :=
+    match u with
     | []      => λ v, []
     | x :: u' => λ v,
         let (y, v') := inv_vectS v in
@@ -69,8 +83,19 @@ Proof.
   - sdinv v as [y v']. cbn. f_equal. apply Hu'.
 Qed.
   
-(* Alternately, recursion can be performed on the common size of vectors *)
 Definition map3 {A B C D : Type} (f : A → B → C → D) :
+  ∀ n, vect A n → vect B n → vect C n → vect D n :=
+  fix loop n (u : vect A n) :=
+    match u with
+    | []      => λ v w, []
+    | x :: u' => λ v w,
+        let (y, v') := inv_vectS v in
+        let (z, w') := inv_vectS w in
+        f x y z :: loop _ u' v' w'
+    end.
+
+(* Alternately, recursion can be performed on the common size of vectors *)
+Definition map3_alt {A B C D : Type} (f : A → B → C → D) :
   ∀ n, vect A n → vect B n → vect C n → vect D n :=
   fix loop n :=
     match n with
@@ -124,11 +149,10 @@ Definition map_m {A : Type} m (f : An_to_A A m) :
 Lemma map3_special_case A (f : A → A → A → A) n u v w :
   map3 f n u v w = map_m 3 f n u v w.
   induction n as [ | n Hn].
-  - cbn. reflexivity.
+  - cbn. sdinv u. reflexivity.
   - sdinv u as [x u']. sdinv v as [y v']. sdinv w as [z w'].
     cbn. f_equal. apply Hn.
 Qed.
-
 
 (* ====================================================================== *)
 
@@ -146,3 +170,86 @@ Fixpoint remap2 {A B C : Set} (f : A → B → C) {n} (u : vect A n) :
   | []     => λ v, dinv_let () := v in Rmnil
   | x :: u => λ v, dinv_let (y, v) := v in Rmcons (f x y) (remap2 f u v)
   end.
+
+
+From Equations Require Import Equations.
+
+Equations eqmap2 {A B C} (f : A → B → C) {n} (u : vect A n) (v : vect B n) : vect C n :=
+  eqmap2 f [] [] := [] ;
+  eqmap2 f (a :: u) (b :: v) := (f a b) :: (eqmap2 f u v).
+
+Equations eqremap2 {A B C} (f : A → B → C) {n} (u : vect A n) (v : vect B n) : Remap2 C u v :=
+  eqremap2 f [] [] := Rmnil ;
+  eqremap2 f (a :: u) (b :: v) := Rmcons (f a b) (eqremap2 f u v).
+
+(* ====================================================================== *)
+(* Co-inductive vectors *)
+
+CoInductive conat : Set :=
+| CO : conat
+| CS : conat → conat.
+
+CoInductive covec A : conat → Type :=
+| cvnil : covec A CO
+| cvcons : A → ∀ n, covec A n → covec A (CS n).
+Arguments cvnil {_}.
+Arguments cvcons {_} _ {_} _ .
+
+Notation "[ ~ ]" := cvnil (format "[ ~ ]").
+Notation "x ::~ v" := (cvcons x v) (at level 60, right associativity).
+
+Lemma eq_decomp_covec {A n} (v : covec n A) :
+  match v with [~] => [~] | x ::~ v => x ::~ v end = v.
+Proof. destruct v; reflexivity. Qed.
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for covec.
+(* covec_CO covec_CS *)
+Derive Dependent InvProxy for covec.
+(* covec_CO_dep covec_CS_dep *)
+Set Elimination Schemes.
+
+(* For convenience in let expressions *)
+Notation sinv_covec u := (invproxy u : covec_CS _ _).
+
+(* map2 on co-vectors *)
+CoFixpoint cvmap2 {A B C} (f : A → B → C) {n} (v : covec A n) : covec B n → covec C n :=
+  match v with
+  | [~] => λ _, [~]
+  | x ::~ v => λ w, let (y, w) := sinv_covec w in f x y ::~ cvmap2 f v w
+  end.
+
+Definition cvmap2_step {A B C} (f : A → B → C) {n} (v : covec A n) : covec B n → covec C n :=
+  match v with
+  | [~] => λ _, [~]
+  | x ::~ v => λ w, let (y, w) := sinv_covec w in f x y ::~ cvmap2 f v w
+  end.
+
+Lemma cvmap2_step_eq {A B C} (f : A → B → C) {n} (v : covec A n) (w : covec B n) :
+  cvmap2_step f v w = cvmap2 f v w.
+Proof.
+  case (eq_decomp_covec (cvmap2 f v w)). destruct v; sdinv w; cbn; reflexivity.
+Qed.
+
+(* Bisimilarity relation between co-vectors, to be used in correctness statementts *)
+CoInductive covec_eq {A} : ∀ {n}, covec A n → covec A n → Prop :=
+  | cvnil_eq : covec_eq [~] [~]
+  | cvcons_eq x n (v w : covec A n) : covec_eq v w → covec_eq (x ::~ v) (x ::~ w).
+
+(* Lemma similar to swap_map2 *)
+Lemma swap_cvmap2 {A B C : Type} (f : A → B → C) : ∀ n u v,
+  covec_eq (cvmap2 (swap f) u v) (swap (cvmap2 f (n:=n)) u v).
+Proof.
+  cofix loop. intros n u v.
+  change (swap ?f ?x ?y) with (f y x). repeat case cvmap2_step_eq. 
+  destruct u as [ | x n u'].
+  - sdinv v. cbn. apply cvnil_eq.
+  - sdinv v as [y v']. cbn. apply cvcons_eq. apply loop.
+Qed.
+
+(* Using Equations, an exception is raised *)
+(*
+Equations cvmap2 {A B C} (f : A → B → C) n (u : covec A n) (v : covec B n) : covec C n :=
+  cvmap2 f _ [~] [~] := [~] ;
+  cvmap2 f _ (a ::~ u) (b ::~ v) := cvcons (f a b) (cvmap2 f n u v).
+*)

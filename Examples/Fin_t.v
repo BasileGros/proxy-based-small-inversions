@@ -1,7 +1,7 @@
 
 From Stdlib Require Import Fin.
 
-(* Handcrafted small inversion *)
+(* Handcrafted proxy-based dependent small inversion *)
 Inductive Fin_O : Fin.t 0 -> Set :=.
 Inductive Fin_S (n : nat) : Fin.t (S n) -> Set :=
 | is_F1 : Fin_S n F1

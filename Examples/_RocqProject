@@ -5,9 +5,10 @@
 -R . Examples
 ./examples_header.v
 ./even.v
+./bounded_even.v  
 ./Fin_t.v
 ./list_position.v
-./map3.v
+./map2_around.v
 ./matrices.v
 ./next_color.v
 ./stlc_Poulsen.v

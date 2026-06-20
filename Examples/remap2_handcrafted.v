@@ -1,5 +1,7 @@
 (* Handcrafted proxy-based small inversions for vectors,
-   used in map2 and remap2, a simple example of dependent inversion *)
+   used in map2 and remap2, a simple example of dependent inversion
+   The same example using automated PBSI is given in map3.v
+ *)
 From Stdlib Require Import Utf8.
 
 Inductive vect (X : Type) : nat → Type :=
