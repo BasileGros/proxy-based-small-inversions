@@ -63,10 +63,10 @@ A co-inductive version of vectors is also briefly considered.
 presents how to use proxy-based small inversions to manipulate the `Fin.t` bounded natural numbers which are notoriously impractical to use.
 
 - [even](./Examples/even.v)
-present a simple example of proxy-based small inversions used in proofs rather than functions.
+presents a simple example of proxy-based small inversions used in proofs rather than functions.
 
 - [bounded_even](./Examples/bounded_even.v)
-A similar example where natural numbers are replaced by bounded natural numbers.
+presents a similar example where natural numbers are replaced by bounded natural numbers.
 In this example, we have an indexed index.
 
 - [next_color](./Examples/even.v)
@@ -79,12 +79,12 @@ uses proxy-based small inversions to prove properties on a custom inductive type
 showcases the commands used to invert an inductive type according either to a user-given pattern, or a pattern custom-made for a specific inductively typed object.
 
 - [stlc_Poulsen](./Examples/stlc_Poulsen.v)
-showcases an adaptation in Rocq of some of the material presented in
+presents an adaptation in Rocq of some of the material given in
 "Intrinsically-Typed Definitional Interpreters for Imperative Languages"
 by Poulsen et al., POPL 2018.
 
 - [stlc_viewleft_handcrafted](./Examples/stlc_viewleft_handcrafted.v)
-showcases the "extended example" developed in the last section of
+presents the "extended example" developed in the last section of
    "The view from the left" by McBride & McKinna, JFP 2004.
 
 ## The commands to derive the intermediate definitions.
