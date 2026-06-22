@@ -55,14 +55,19 @@ The [Examples](./Examples) folder illustrates various use cases of proxy-based s
 - [matrices](./Examples/matrices.v)
 showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq, using transposition of matrices as an example.
 
-- [map3](./Examples/map3.v)
+- [map2_around](./Examples/map2_around.v)
 expands on the use for vectors with different map functions.
+A co-inductive version of vectors is also briefly considered.
 
 - [Fin_t](./Examples/Fin_t.v)
 presents how to use proxy-based small inversions to manipulate the `Fin.t` bounded natural numbers which are notoriously impractical to use.
 
 - [even](./Examples/even.v)
-present a simpler examples of proxy-based small inversions used in proofs rather than functions.
+present a simple example of proxy-based small inversions used in proofs rather than functions.
+
+- [bounded_even](./Examples/bounded_even.v)
+A similar example where natural numbers are replaced by bounded natural numbers.
+In this example, we have an indexed index.
 
 - [next_color](./Examples/even.v)
 uses the toy example of the colors of a trafic light to present inversion of multiple indices.
@@ -73,6 +78,14 @@ uses proxy-based small inversions to prove properties on a custom inductive type
 - [patterns](./Examples/patterns.v)
 showcases the commands used to invert an inductive type according either to a user-given pattern, or a pattern custom-made for a specific inductively typed object.
 
+- [stlc_Poulsen](./Examples/stlc_Poulsen.v)
+showcases an adaptation in Rocq of some of the material presented in
+"Intrinsically-Typed Definitional Interpreters for Imperative Languages"
+by Poulsen et al., POPL 2018.
+
+- [stlc_viewleft_handcrafted](./Examples/stlc_viewleft_handcrafted.v)
+showcases the "extended example" developed in the last section of
+   "The view from the left" by McBride & McKinna, JFP 2004.
 
 ## The commands to derive the intermediate definitions.
 ### Specialising over all possible indices
