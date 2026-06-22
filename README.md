@@ -89,7 +89,7 @@ presents the "extended example" developed in the last section of
 
 ## The commands to derive the intermediate definitions.
 ### Specialising over all possible indices
-As said earlier, proxy-based small inversions work by specialising an inductive type over the possible constructors its inductively-typed indices can take.
+Proxy-based small inversions work by specialising an inductive type over the possible constructors its inductively-typed indices can take.
 
 The general command "`Derive InvProxy for T`" specialises the inductive type over all *useful* indices -- technically: all indices that take the form of a constructor in the conclusion of the constructors of $T$.
 
