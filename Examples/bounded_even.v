@@ -1,7 +1,7 @@
 (** Author: Jean-François Monin, Verimag, Université Grenoble Alpes *)
 
 (** Even bounded natural numbers *)
-(** Illustrates proxy-based small inversion with an indexed indice
+(** Illustrates proxy-based small inversion with an indexed index
 *)
 
 From Stdlib Require Import Utf8.
@@ -14,7 +14,7 @@ Inductive bn : nat → Set :=
 | BS : ∀ {n}, bn n → bn (S n).
 
 (* Proxy-based dependent small inversion
-  (Can be derived automatically)         *)     
+  (Can be derived automatically)         *)
 Variant bn_O_dep : bn O → Set := .
 Variant bn_S_dep n : bn (S n) → Set :=
 | BO_S_dep : bn_S_dep n (@BO n)
@@ -277,7 +277,7 @@ Proof.
 Qed.
 
 (** ------------------------------------------------------------ *)
-(** bisimilarity relation on bn, useful in even'_transfer1 *)
+(** bisimilarity relation on bn, useful in even'_transfer1|2 *)
 
 Inductive bn_bisim : ∀ {n} (i : bn n) {m} (j : bn m), Prop :=
 | bBO : ∀ n m, bn_bisim (@BO n) (@BO m)
@@ -298,7 +298,7 @@ Definition bn_bisim_sinv2 {n m} {i : bn n} {j : bn m}
   (bb : bn_bisim i j) : bn_bisim_sinv2_type i _ j :=
   match bb with
   | bBO n m => bBO_BO m
-  | bBS n i m j bb => bBS_BS n i m j bb 
+  | bBS n i m j bb => bBS_BS n i m j bb
   end.
 
 (* Small inversion on i and m *)
@@ -324,7 +324,7 @@ Definition bn_bisim_sinv23 {n m} {i : bn n} {j : bn m}
   match bb with
   | bBO n m => bBO_BO_S m
   | bBS n i m j bb => bBS_BS_S n i m j bb
-  end. 
+  end.
 (* *)
 
 Lemma transfer1_bisim m {n} (i : bn n) : bn_bisim (transfer1 m i) i.
@@ -369,7 +369,7 @@ Proof.
   - apply bBS. apply Hi.
 Qed.
 
-Corollary even'_transfer2 m {n} {i : bn (S n)} : even' (transfer2 i (S m)) → even' i.
+Corollary even'_transfer2 m {n} {i : bn (S n)} : even' (transfer2 i m) → even' i.
 Proof.
-  intro e. apply (even'_bisim _ e). exact (transfer2_bisim (S m) i).
+  intro e. apply (even'_bisim _ e). exact (transfer2_bisim m i).
 Qed.
