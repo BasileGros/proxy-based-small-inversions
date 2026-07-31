@@ -563,8 +563,8 @@ Definition partial_inductive_constructor
         telescope_to_letin lift_type list_sigma
       in
       let tProd_new_args := rev_context_to_tProd constructor_P.(cstr_args) in
-    let letin_params := list_term_to_letin params_variable in
-      (*Adds the new parametres to the type*)
+      let letin_params := list_term_to_letin params_variable in
+      (*Adds the new indices to the type*)
       let added_type :=
         insert_tProd_in_type sigma_type (position_variable) tProd_new_args
       in
@@ -1028,7 +1028,7 @@ Fixpoint create_cases_submatch
       decl_constr ::list_ctx_cons)
   end.
 
-Definition create_inversion_submatch
+Definition create_proxy_submatch
   (spec_info : specialisation_info)
   (deBruijn_variable : nat) (position_variable : nat)
   (list_params : list term)
@@ -1110,14 +1110,14 @@ Definition create_inversion_submatch
   Success inv_term.
 
 
-Fixpoint create_inversion_objects
+Fixpoint create_proxy_objects
   (spec_info : specialisation_info) (index_constr_R : nat) (list_constr_R : list (option constructor_body))
   : ErrorMonad (list (option term)) :=
   
   match list_constr_R with
   |[] => Success []
   |None :: t_constr_R =>
-     tl <-? create_inversion_objects spec_info (index_constr_R + 1) t_constr_R;;
+     tl <-? create_proxy_objects spec_info (index_constr_R + 1) t_constr_R;;
      Success (None :: tl)
   |Some constr_R :: t_constr_R =>
      let opt_infos_constr_R :=
@@ -1127,7 +1127,7 @@ Fixpoint create_inversion_objects
      match opt_infos_constr_R with
      |None =>
         Error (
-            "small_inv.create_inversion_cases : Anomaly : constructor "
+            "small_inv.create_proxy_objects : Anomaly : constructor "
             ^(string_of_nat index_constr_R)
             ^" of R was not inverted")
      |Some list_ref_relation =>
@@ -1136,7 +1136,7 @@ Fixpoint create_inversion_objects
         |[] => Success []
         |ref_pilot :: _ =>
            list_tail_objects <-?
-             create_inversion_objects spec_info (index_constr_R + 1) t_constr_R 
+             create_proxy_objects spec_info (index_constr_R + 1) t_constr_R 
            ;;
            
            match (reference_pilot ref_pilot) with
@@ -1176,11 +1176,11 @@ Fixpoint create_inversion_objects
 
            |variable de_Bruijn position_variable list_params =>
 
-              inversion_submatch <-? create_inversion_submatch
+              proxy_submatch <-? create_proxy_submatch
                 spec_info de_Bruijn position_variable list_params
                 constr_R index_constr_R (rev list_ref_relation)
               ;;
-              Success ( (Some inversion_submatch) ::list_tail_objects)
+              Success ( (Some proxy_submatch) ::list_tail_objects)
            end
         end
      end
@@ -1192,7 +1192,7 @@ Definition transfo_specialisation
     does the specialisation still happen (true)
     or does it returns an error (false)?*)
   (is_forced : bool)
-  (position_pilot : nat) : transfo :=
+  (position_pilot : nat) : transformation :=
   fun transfo_info =>
     spec_info <-? data_extraction_spec transfo_info position_pilot is_forced;;
     let (list_transfo,list_dispatch_cases_context) :=
@@ -1209,6 +1209,6 @@ Definition transfo_specialisation
       create_dispatch_term spec_info list_dispatch_cases (rev dispatch_context)
     in
     
-    new_end_constructors <-? create_inversion_objects spec_info 0  (lctors transfo_info) ;;
+    new_end_constructors <-? create_proxy_objects spec_info 0  (lctors transfo_info) ;;
 
     Success ((proxy_type_adapter,new_end_constructors ), list_transfo, fun l => l).

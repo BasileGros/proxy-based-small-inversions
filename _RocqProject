@@ -30,6 +30,7 @@ SmallInversion/proxy_identity.v
 SmallInversion/deparameterisation.v
 SmallInversion/parameterisation.v
 SmallInversion/specialisation.v
+SmallInversion/finalisation.v
 SmallInversion/strategy_creation.v
 SmallInversion/MR_interface.v
 SmallInversion/ML_interface.v

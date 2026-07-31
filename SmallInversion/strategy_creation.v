@@ -9,11 +9,12 @@ From SmallInversion Require Import parameterisation.
 From SmallInversion Require Import strategy_engine.
 From SmallInversion Require Import strategy_debug.
 From SmallInversion Require Import specialisation.
+From SmallInversion Require Import finalisation.
 From SmallInversion Require Import proxy0.
 From utils Require Import utils.
 
 
-Fixpoint sequence (l : list transfo)
+Fixpoint sequence (l : list transformation)
   (strat_end : transformation_info ->  strategy) : transformation_info ->  strategy  :=
   match l with
   |[] => strat_end
@@ -21,7 +22,7 @@ Fixpoint sequence (l : list transfo)
   end.
 
 Fixpoint first_from_list {A}
-  (l:list A) (param_transfo: A -> transfo)
+  (l:list A) (param_transfo: A -> transformation)
   (on_success: transformation_info -> strategy)
   (on_failure: strategy)
   : strategy :=
@@ -36,7 +37,7 @@ Fixpoint first_from_list {A}
 CoFixpoint iter_choices_ {A}
   (genchoices:transformation_info -> list A)
   (choices: list A)
-  (param_transfo: A -> transfo)
+  (param_transfo: A -> transformation)
   (on_end: transformation_info -> strategy)
   (info : transformation_info):=
   match choices with
@@ -49,7 +50,7 @@ CoFixpoint iter_choices_ {A}
 
 Definition iter_choices {A}
   (genchoices:transformation_info -> list A)
-  (param_transfo: A -> transfo)
+  (param_transfo: A -> transformation)
   (on_end: transformation_info -> strategy)
   (info : transformation_info):=
   iter_choices_  genchoices (genchoices info) param_transfo on_end info.
@@ -57,7 +58,7 @@ Definition iter_choices {A}
 CoFixpoint debug_iter_choices_ {A}
   (genchoices:transformation_info -> list A)
   (choices: list A)
-  (param_transfo: A -> transfo)
+  (param_transfo: A -> transformation)
   (on_end: transformation_info -> strategy)
   (info : transformation_info):=
   match choices with
@@ -70,16 +71,16 @@ CoFixpoint debug_iter_choices_ {A}
 
 Definition debug_iter_choices {A}
   (genchoices:transformation_info -> list A)
-  (param_transfo: A -> transfo)
+  (param_transfo: A -> transformation)
   (on_end: transformation_info -> strategy)
   (info : transformation_info):=
    debug_iter_choices_  genchoices (genchoices info) param_transfo on_end info.
 
 Definition strategy_identity  : strategy :=
-  strat_Cons no_debug finalize_proxy (fun _ => strat_Fail).
+  strat_Cons no_debug finalize_proxy (fun _ => strat_Finish).
 
 Definition debug_strategy_identity  : strategy :=
-  strat_Cons here_debug finalize_proxy (fun _ => strat_Fail).
+  strat_Cons here_debug finalize_proxy (fun _ => strat_Finish).
 
 
 Definition strategy_deparam : strategy :=

@@ -162,7 +162,7 @@ Definition parameterise_index_constructor (position_index:nat)(nb_params:nat)(co
      let (concl_without_index, opt_var_index) := remove_and_return_index_from_list concl_type (position_index + nb_params) in
      match opt_var_index with
      |Some var_index =>
-        (*Add back the removed index a the end of the parameters*)
+        (*Add back the removed index at the end of the parameters*)
         let new_concl := insert_list_in_list [var_index] concl_without_index nb_params in
         (*Put back the indices at the conclusion of the constructor telescope*)
         let new_type := insert_new_concl_telescope modified_telescope_type new_concl in
@@ -463,7 +463,7 @@ Definition proxy_type_reparam
      
      (*Creates the telescope by successively adding the different elements and transforming the variable references into De Bruijn indexes.*)
      let tail_proxy_type :=
-       tApp (tVar name_type) (*l*) (calls_old_params ++ calls_new_params++ calls_new_indices)
+       tApp (tVar name_type) (calls_old_params ++ calls_new_params++ calls_new_indices)
      in
      let proxy_type_without_dispatch :=
        append_context_vars_lambda (env_quote transfo_info) ctx_old_params_indices tail_proxy_type
@@ -481,13 +481,6 @@ Definition proxy_type_reparam
          (string_to_aname name_disp)
          (derec_poib).(pseudo_type)
      in
-     (*
-     let decl_disp_reparam :=
-       vass
-         (string_to_aname name_disp)
-         poib_repar.(pseudo_type)
-     in*)
-
      
      match list_isparam with
      |[] =>
@@ -506,7 +499,6 @@ Definition proxy_type_reparam
              (env_quote transfo_info)
              (length derec_poib.(pseudo_indices) + length lctors_repar)
           )
-          
           derec_lctors
           lctors_repar
           ordered_lists_args_reparam
@@ -534,7 +526,7 @@ Definition proxy_reparam_error
 
 (*Adapter to fit the definition of a transformation.
  Supposes that the mib is already deparameterised.*)
-Definition transfo_parameterisation : transfo :=
+Definition transfo_parameterisation : transformation :=
   fun (transfo_info : transformation_info) =>
     '(proxy_type_adapter, list_proxy_cons_adapter, mib_reparam, oib_repar, lctors_repar) <-?
       proxy_reparam_error transfo_info;;

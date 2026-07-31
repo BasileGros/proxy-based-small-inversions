@@ -53,7 +53,7 @@ Definition deparameterisation_mib (transfo_info : transformation_info) : pseudo_
 
 (*Due to the fact that parameters and arguments are passed to constructors in the proxy,
 the proxy itself is the identity.*)
-Definition transfo_deparameterisation : transfo :=
+Definition transfo_deparameterisation : transformation :=
   fun transfo_info : transformation_info =>
     let deparam_pmib := deparameterisation_mib transfo_info in
     let deparam_poib := deparameterisation_oib transfo_info in
