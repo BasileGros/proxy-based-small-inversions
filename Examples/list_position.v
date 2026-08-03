@@ -1,4 +1,4 @@
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
 
 (** This file presents a case study on the use of (mainly dependent)
 proxy-based small inversions.

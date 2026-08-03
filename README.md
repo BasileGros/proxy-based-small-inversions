@@ -65,7 +65,7 @@ presents how to use proxy-based small inversions to manipulate the `Fin.t` bound
 - [even](./Examples/even.v)
 presents a simple example of proxy-based small inversions used in proofs rather than functions.
 
-- [bounded_even](./Examples/bounded_even.v)
+- [bounded_even_handcrafted](./Examples/bounded_even_handcrafted.v)
 presents a similar example where natural numbers are replaced by bounded natural numbers.
 In this example, we have an indexed index.
 

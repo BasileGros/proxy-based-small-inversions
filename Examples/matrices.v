@@ -1,4 +1,4 @@
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
 (* ====================================================================== *)
 
 (* More advanced examples on vectors, matrices and bounded nats.

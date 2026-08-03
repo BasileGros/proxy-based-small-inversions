@@ -3,9 +3,8 @@
 -R ../SmallInversion SmallInversion
 -R ../utils utils
 -R . Examples
-./examples_header.v
 ./even.v
-./bounded_even.v  
+./bounded_even_handcrafted.v  
 ./Fin_t.v
 ./list_position.v
 ./map2_around.v
@@ -14,4 +13,5 @@
 ./stlc_Poulsen.v
 ./stlc_viewleft_handcrafted.v
 ./patterns.v
+./remap2.v
 ./remap2_handcrafted.v

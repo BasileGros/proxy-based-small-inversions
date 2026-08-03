@@ -1,4 +1,5 @@
-From Examples Require Import examples_header.
+From Stdlib Require Import Utf8.
+From SmallInversion Require Import small_inversion.
 
 From Stdlib Require Import Fin.
 

@@ -40,7 +40,7 @@ Proof.
 Qed.
 
 (* Automated small inversions *)
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
 
 Fail Derive InvProxy for even.
 (* prefix to avoid name collision *)

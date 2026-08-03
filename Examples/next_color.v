@@ -1,6 +1,6 @@
 (* Simple uses if proxy-based small inversions in interactive proofs *)
 
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
 
 
 

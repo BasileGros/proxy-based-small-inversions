@@ -1,4 +1,4 @@
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
 (* ====================================================================== *)
 
 (* The map function is easy to define on vectors.

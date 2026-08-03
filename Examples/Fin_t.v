@@ -43,7 +43,10 @@ Definition Fin_3_rect_smallinv
   end.
 
 (* Automated small inversion *)
-From Examples Require Import examples_header.
+From SmallInversion Require Import small_inversion.
+
+(* For λ notation *)
+From Stdlib Require Import Utf8.
 
 Derive Dependent InvProxy for Fin.t.
 
