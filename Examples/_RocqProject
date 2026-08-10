@@ -1,7 +1,6 @@
 -docroot ..
 
 -R ../SmallInversion SmallInversion
--R ../utils utils
 -R . Examples
 ./even.v
 ./bounded_even_handcrafted.v  
@@ -15,3 +14,4 @@
 ./patterns.v
 ./remap2.v
 ./remap2_handcrafted.v
+./comparison.v

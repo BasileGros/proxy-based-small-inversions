@@ -59,6 +59,12 @@ showcases the use of proxy-based small inversions to manipulate the notably fini
 expands on the use for vectors with different map functions.
 A co-inductive version of vectors is also briefly considered.
 
+- [comparison](./Examples/comparison.v)
+presents several approaches to define a given function on a dependent data-structure
+a given lemma on it: 
+small inversions of Monin and Shi, ITP3; the tactic `inversion`;
+and the `Equations` package of Sozeau.
+
 - [Fin_t](./Examples/Fin_t.v)
 presents how to use proxy-based small inversions to manipulate the `Fin.t` bounded natural numbers which are notoriously impractical to use.
 
