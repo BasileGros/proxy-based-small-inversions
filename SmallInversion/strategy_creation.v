@@ -44,7 +44,8 @@ CoFixpoint iter_choices_ {A}
   | [] => on_end info
   | a :: remaining_choices =>
       strat_Orelse
-        (strat_Cons no_debug (param_transfo a) (iter_choices_ genchoices (genchoices info) param_transfo on_end))
+        (strat_Cons no_debug (param_transfo a)
+           (fun info' => iter_choices_ genchoices (genchoices info') param_transfo on_end info'))
         (iter_choices_ genchoices remaining_choices param_transfo on_end info)
   end.
 
