@@ -62,7 +62,7 @@ A co-inductive version of vectors is also briefly considered.
 - [comparison](./Examples/comparison.v)
 presents several approaches to define a given function on a dependent data-structure
 a given lemma on it: 
-small inversions of Monin and Shi, ITP3; the tactic `inversion`;
+small inversions of Monin and Shi, ITP13; the tactic `inversion`;
 and the `Equations` package of Sozeau.
 
 - [Fin_t](./Examples/Fin_t.v)
