@@ -4,15 +4,24 @@ From Equations Require Import Equations.
 (* ====================================================================== *)
 
 (* Different approaches to dependent pattern-matching can be used in Rocq.
-   Here is a comparison of them on the same programming problem :
-   map2 and its dependent version remap2, taken in the sibling file map2_around.v
    In the experiments below, we use:
    - The Rocq Prover, version 9.1.0
    - The Equations plugin, opam package: rocq-equations 1.3.1+9.1
+
+   PART 1 is a comparison of them on the same programming problem :
+   map2 and its dependent version remap2, taken in the sibling file map2_around.v
+   PART 2 is dedicated to indices indexed by indices, using an example
+   inspired by the counter-example given in [Monin & Shi, ITP'13].
 *)
 
 (* In order to allow ∀ and λ notations *)
 From Stdlib Require Import Utf8.
+
+(* ================================================================================ *)
+(* ================================================================================ *)
+(* PART 1 *)
+
+(* Vectors and map2 *)
 
 Inductive vect (A : Type) : nat → Type :=
 | nil : vect A 0
@@ -95,17 +104,17 @@ Qed.
 (* ---------------------------------------------------------------------- *)
 (* Small inversions presented at ITP13 -- named si13 below *)
 
-(* The focus of si13 was on proofs,
-   not on programming using dependent types.
+(* The focus of si13 was on proofs, not on programming using dependent types.
    In contrast with PBSI submitted to LPAR26, si13 does not consider:
    1/ programs such as map2;
    2/ reasoning on si13 terms, and programs such as remap2.
   Item 1/ raises no difficulty.  In order to compare PBSI and si13,
   the return clause named diag in si13 is defined explicitly here,
-  and its named is suffixed by "_premises_type", since it provides the
+  and its name is suffixed by "_premises_type", since it provides the
   type of the inversion function itself suffixed by "_premises".
   It is clear that the inversion mechanism of si13 is the
-  impredicative encoding of PBSI.
+  functional encoding in polymorphic λ-calculus of PBSI
+  (referred to below as system F-style encoding of PBSI).
   In particular, "let (y, v') := inv_vectS v in RESULT" is translated by
   "vect_premises v _ (λ y v', RESULT)".
   The programs are of the same order of magnitude as for PBSI,
@@ -119,7 +128,7 @@ Qed.
  *)
 
 Definition vect_premises_type A n : Type :=
-  match n with 
+  match n with
   | 0   => ∀ X, X → X
   | S n => ∀ X, (A → vect A n → X) → X
   end.
@@ -147,10 +156,10 @@ Proof.
   - sdinv v as [y v']. cbn. f_equal. apply Hu'.
 Qed.
 
-(* We can also consider the impredicative encoding of dependent PBSI. *)
+(* We can also consider the system F-style encoding of dependent PBSI. *)
 
 Definition vect_premises_dep_type A n : vect A n → Type :=
-  match n with 
+  match n with
   | 0   => λ u, ∀ X, X [] → X u
   | S n => λ u, ∀ X, (∀ x (u' : vect A n), X (x :: u')) → X u
   end.
@@ -421,7 +430,7 @@ Fixpoint remap2_si13 {A B C} (f : A → B → C) {n} (u : vect A n) :
   end.
 
 (* Using dependent PBSI, we can prove lemmas on programs defined
-   with the impredicative encoding of dependent PBSI *)
+   with the system F-style encoding of dependent PBSI *)
 Lemma swap_remap2_si13_using_sdinv {A B C : Type} (f : A → B → C) n u v :
   remap2_si13 (n:=n) (swap f) u v = swRemap2 (depswap (remap2_si13 f) u v).
 Proof.
@@ -430,7 +439,7 @@ Proof.
   - sdinv v as [y v']. cbn. f_equal. apply Hu'.
 Qed.
 
-(* The impredicative encoding of dependent PBSI can be sued as well *)
+(* The system F-style encoding of dependent PBSI can be used as well *)
 Lemma swap_remap2_si13 {A B C : Type} (f : A → B → C) n u v :
   remap2_si13 (n:=n) (swap f) u v = swRemap2 (depswap (remap2_si13 f) u v).
 Proof.
@@ -606,3 +615,361 @@ Equations cvmap2 {A B C} (f : A → B → C) n (u : covec A n) (v : covec B n) :
   cvmap2 f _ [~] [~] := [~] ;
   cvmap2 f _ (a ::~ u) (b ::~ v) := cvcons (f a b) (cvmap2 f n u v).
 *)
+
+
+(* ================================================================================ *)
+(* ================================================================================ *)
+
+(* PART 2 *)
+
+(* The counter example of Monin & Shi, ITP13, followed by
+   a "squared" version of the same problem.
+   This is an artificial but simple example where we have
+   an indice indexed by an indice, then an indice indexed by
+   an indice that is itself indexed by an indice.
+   Here inversion always fails, but intrestingly exposes
+   equalities between telescopes.
+   Historically, JMEQ was introduced by McBride to handle such situations.
+   Later on, as JMEQ or, equivalently, UIP appeared as incompatible with
+   univalence from HoTT, additional efforts led to solutions that do
+   not necessitate UIP. This was first implemented in Agda
+   (see Cock's PhD) then in Coq/Rocq, as the Equations package
+   by Sozeau and Mangin.
+ *)
+
+(* ------------------------------------------ *)
+(* Bounded natural numbers (as usual)         *)
+
+Inductive bn : nat → Set :=
+| BO : ∀ {n}, bn (S n)
+| BS : ∀ {n}, bn n → bn (S n).
+
+(* Proxy-based dependent small inversion
+  (Can be derived automatically)         *)
+Variant bn_O_dep : bn O → Set := .
+Variant bn_S_dep n : bn (S n) → Set :=
+| BO_S_dep : bn_S_dep n (@BO n)
+| BS_S_dep (i : bn n) : bn_S_dep n (BS i).
+
+Definition bn_sdinv_type {n} : bn n → Set :=
+  match n with
+  | O => bn_O_dep
+  | S n => bn_S_dep n
+  end.
+
+Definition bn_sdinv {n} (i : bn n) : bn_sdinv_type i :=
+  match i with
+  | @BO n => BO_S_dep n
+  | BS i => BS_S_dep _ i
+  end.
+
+(** ------------------------------------------------------------ *)
+(** * Inductive definition of even bounded numbers *)
+Inductive even : ∀ {n}, bn n → Type :=
+| even0 {n} :           even (@BO n)
+| even2 {n} {i: bn n} : even i → even (BS (BS i)).
+
+Definition Fake := Prop.
+
+(* Automated PBSI is still not implemented *)
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for even.
+(* We get:
+even_O is defined
+even_S_O is defined
+even_S_S is defined
+even_proxy is defined
+This is not what we expect!
+*)
+Set Elimination Schemes (* For comfort *).
+
+Reset Fake.
+
+Fail Derive InvProxy for even with index 1.
+(* Message: Pilot index is dependent *)
+
+(* But handcradted PBSI works fine *)
+
+(** Basic small inversion *)
+Variant even_BO : Type :=
+| even0_BO : even_BO.
+Variant even_BS_BO : Type := .
+Variant even_BS_BS {n} (i: bn n) : Type :=
+| even2_BS_BS (e : even i) : even_BS_BS i.
+Arguments even2_BS_BS {_ _}.
+
+Definition even_proxy_type n (i : bn n) : Type :=
+  match i with
+  | BO        => even_BO
+  | BS BO     => even_BS_BO
+  | BS (BS i) => even_BS_BS i
+  end.
+
+Definition even_proxy {n} {i : bn n} (e : even i) : even_proxy_type n i :=
+  match e with
+  | even0   => even0_BO
+  | even2 e => even2_BS_BS e
+  end.
+
+(* Similar to the counter example given in [Monin & Shi, ITT'13] :
+   inversion fails *)
+Definition proj_even2_inversion n (i : bn n) (e : even (BS (BS i))) : even i.
+Proof.
+  inversion e as [ | n' i' e' en edp].
+  (* eex : (n; i') = (n; i) is an equality between dependent pairs.
+    The old way to manage it would be to use JMEQ or UIP
+    to get i = i'. *)
+  destruct edp. (* no real progress *)
+Abort.
+
+(* PBSI works *)
+Definition proj_even2_pbsi n (i : bn n) (e : even (BS (BS i))) : even i :=
+  let (e') := even_proxy e in e'.
+
+Print proj_even2_pbsi. (* 2 lines as well *)
+
+(* Using Equations *)
+
+(* Equations works. Here is a scenario. *)
+
+Fail
+Equations proj_even2_equations n (i : bn n) (e : even (BS (BS i))) : even i :=
+  proj_even2_equations n i (even2 e)  :=  e.
+(*
+[noConfusion] Trying to use a non-definitional noConfusion rule on (bn (S (S n))), which does not have a
+[NoConfusionHom] instance. Either [Derive NoConfusionHom for bn], or [Derive NoConfusion for bn] if it requires
+uniqueness of identity proofs and enable [Equations With UIP] to allow this
+*)
+
+Definition Fake := Prop.
+
+Derive NoConfusionHom for bn.
+
+Equations proj_even2_equations n (i : bn n) (e : even (BS (BS i))) : even i :=
+  proj_even2_equations n i (even2 e)  :=  e.
+
+Print Assumptions proj_even2_equations.
+Print proj_even2_equations.
+(*
+proj_even2_equations =
+λ (n : nat) (i : bn n) (e : even (BS (BS i))),
+  match
+    e in (@even n0 b) return ({| pr1 := n0; pr2 := b |} = {| pr1 := S (S n); pr2 := BS (BS i) |} → even i)
+  with
+  | @even0 n0 =>
+      DepElim.eq_simplification_sigma1_dep (S n0) (S (S n)) BO (BS (BS i))
+        (apply_noConfusion (S n0) (S (S n))
+           (λ H : n0 = S n,
+              DepElim.solution_left_dep (S n) (apply_noConfusion BO (BS (BS i)) (False_rect (even i))) n0 H))
+  | @even2 n0 i0 e0 =>
+      DepElim.eq_simplification_sigma1_dep (S (S n0)) (S (S n)) (BS (BS i0)) (BS (BS i))
+        (apply_noConfusion (S (S n0)) (S (S n))
+           (apply_noConfusion (S n0) (S n)
+              (λ H : n0 = n,
+                 DepElim.solution_left_dep n
+                   (λ (i1 : bn n) (e1 : even i1),
+                      apply_noConfusion (BS (BS i1)) (BS (BS i))
+                        (apply_noConfusion (BS i1) (BS i)
+                           (λ H0 : i1 = i, DepElim.solution_left i (λ e2 : even i, e2) i1 H0 e1)))
+                   n0 H i0 e0)))
+  end eq_refl
+     : ∀ (n : nat) (i : bn n), even (BS (BS i)) → even i
+*)
+
+Print apply_noConfusion.  (* More is necessary to see which instance of noConfusion is used *)
+
+(*  Let us try the "UIP" version *)
+Reset Fake.
+
+Derive NoConfusion for bn.
+
+Equations proj_even2_equations n (i : bn n) (e : even (BS (BS i))) : even i :=
+  proj_even2_equations n i (even2 e)  :=  e.
+
+Print Assumptions proj_even2_equations.
+Print proj_even2_equations.
+(*
+proj_even2_equations =
+λ (n : nat) (i : bn n) (e : even (BS (BS i))),
+  match
+    e in (@even n0 b) return ({| pr1 := n0; pr2 := b |} = {| pr1 := S (S n); pr2 := BS (BS i) |} → even i)
+  with
+  | @even0 n0 =>
+      apply_noConfusion {| pr1 := S n0; pr2 := BO |} {| pr1 := S (S n); pr2 := BS (BS i) |}
+        (False_rect (even i))
+  | @even2 n0 i0 e0 =>
+      apply_noConfusion {| pr1 := S (S n0); pr2 := BS (BS i0) |} {| pr1 := S (S n); pr2 := BS (BS i) |}
+        (apply_noConfusion {| pr1 := S n0; pr2 := BS i0 |} {| pr1 := S n; pr2 := BS i |}
+           (DepElim.eq_simplification_sigma1_dep n0 n i0 i
+              (λ e1 : n0 = n,
+                 DepElim.solution_left_dep n
+                   (λ (i1 : bn n) (e2 : even i1) (H : eq_rect n (λ n1 : nat, bn n1) i1 n eq_refl = i),
+                      DepElim.solution_right (eq_rect n (λ n1 : nat, bn n1) i1 n eq_refl)
+                        (λ e3 : even i1, e3) i H e2)
+                   n0 e1 i0 e0)))
+  end eq_refl
+     : ∀ (n : nat) (i : bn n), even (BS (BS i)) → even i
+ *)
+
+(* ============================================================================================ *)
+(* square even : same scnerario on the even family rather than bn *)
+
+Inductive sqeven : ∀ {n} {i : bn n}, (even i) → Type :=
+| sqeven0 {n} :                        sqeven (n:= S n) (i:=BO) even0
+| sqeven4 {n} {i: bn n} {e : even i} : sqeven e → sqeven (even2 (even2 e)).
+
+(** Basic small inversion *)
+Variant sqeven_even0 : Type :=
+|  sqeven0_even0 : sqeven_even0.
+Variant sqeven_even2_even0 : Type := .
+Variant sqeven_even2_even2 {n} {i: bn n} (e : even i) : Type :=
+| sqeven4_even2_even2 (s : sqeven e) : sqeven_even2_even2 e.
+Arguments sqeven4_even2_even2 {_ _ _}.
+
+Definition sqeven_proxy_type n (i : bn n) (e : even i) : Type :=
+  match e with
+  | even0           => sqeven_even0
+  | even2 even0     => sqeven_even2_even0
+  | even2 (even2 e) => sqeven_even2_even2 e
+  end.
+
+Definition sqeven_proxy {n} {i : bn n} {e : even i} (s : sqeven e) : sqeven_proxy_type n i e :=
+  match s with
+  | sqeven0   => sqeven0_even0
+  | sqeven4 s => sqeven4_even2_even2 s
+  end.
+
+Definition proj_sqeven4_inversion n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e.
+Proof.
+  inversion s.
+(* The equalities between telescopes are enlightening.
+  with regard to J. Cockx's thesis, but unusable.
+  H0, H1, H3, H4 : (S (S n); i1) = (S (S n); BS (BS i))
+  H5 : (S (S n); i1; e0) = (S (S n); BS (BS i); e)
+ *)
+Abort.
+
+Definition proj_sqeven4_pbsi n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e :=
+  let (s') := sqeven_proxy s in s'.
+
+(* Using Equations *)
+Fail
+Equations proj_sqeven4_equations n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e :=
+  proj_sqeven4_equations n i e (sqeven4 s)  :=  s.
+(*
+The command has indeed failed with message:
+[noConfusion] Trying to use a non-definitional noConfusion rule on (bn (S (S (S (S (S (S n))))))), which does
+not have a [NoConfusionHom] instance. Either [Derive NoConfusionHom for bn], or [Derive NoConfusion for bn] if
+it requires uniqueness of identity proofs and enable [Equations With UIP] to allow this
+
+Unfortunately, this message is misleading, the real issue is about even, not bn.
+*)
+
+(* The second suggestion does not work *)
+Fail Derive NoConfusion for bn.
+(* The first one works, but has to be *)
+Derive NoConfusionHom for bn.
+
+Fail
+Equations proj_sqeven4_equations n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e :=
+  proj_sqeven4_equations n i e (sqeven4 s)  :=  s.
+(*
+[noConfusion] Cannot simplify without UIP on type (sigma (λ n : nat, bn n)) or NoConfusion for family even
+*)
+
+Derive NoConfusion for even.
+
+Fail
+Equations proj_sqeven4_equations n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e :=
+  proj_sqeven4_equations n i e (sqeven4 s)  :=  s.
+(*
+[noConfusion] Cannot simplify without UIP on type (sigma (λ n : nat, bn n)) or NoConfusion for family even
+ *)
+
+Derive NoConfusionHom for even.
+
+Equations proj_sqeven4_equations n (i : bn n) (e : even (BS (BS i)))
+  (s : sqeven (even2 (even2 e))) : sqeven e :=
+  proj_sqeven4_equations n i e (sqeven4 s)  :=  s.
+
+Print Assumptions proj_sqeven4_equations.
+
+(* Finally it works. Now let us see the programs. *)
+
+Print proj_sqeven4_pbsi. (* 2 lines *)
+(*
+sqeven_pbsi =
+λ (n : nat) (i : bn n) (e : even (BS (BS i))) (s : sqeven (even2 (even2 e))),
+  let e0 := sqeven_proxy s in match e0 with
+                             | sqeven4_even2_even2 s0 => (λ s' : sqeven e, s') s0
+                             end
+*)
+
+Print proj_sqeven4_equations.
+
+(*
+proj_sqeven4_equations =
+λ (n : nat) (i : bn n) (e : even (BS (BS i))) (s : sqeven (even2 (even2 e))),
+  match
+    s in (@sqeven n0 i0 e0)
+    return
+      ({| pr1 := n0; pr2 := {| pr1 := i0; pr2 := e0 |} |} =
+       {|
+         pr1 := S (S (S (S (S (S n)))));
+         pr2 := {| pr1 := BS (BS (BS (BS (BS (BS i))))); pr2 := even2 (even2 e) |}
+       |} → sqeven e)
+  with
+  | @sqeven0 n0 =>
+      DepElim.eq_simplification_sigma1_dep (S n0) (S (S (S (S (S (S n)))))) {| pr1 := BO; pr2 := even0 |}
+        {| pr1 := BS (BS (BS (BS (BS (BS i))))); pr2 := even2 (even2 e) |}
+        (apply_noConfusion (S n0) (S (S (S (S (S (S n))))))
+           (λ H : n0 = S (S (S (S (S n)))),
+              DepElim.solution_left_dep (S (S (S (S (S n)))))
+                (DepElim.eq_simplification_sigma1_dep BO (BS (BS (BS (BS (BS (BS i)))))) even0
+                   (even2 (even2 e))
+                   (apply_noConfusion BO (BS (BS (BS (BS (BS (BS i))))))
+                      (Logic.False_rect_dep
+                         (λ H0 : False,
+                            eq_rect BO (λ i0 : bn (S (S (S (S (S (S n)))))), even i0) even0
+                              (BS (BS (BS (BS (BS (BS i)))))) (noConfusion H0) =
+                            even2 (even2 e) → sqeven e))))
+                n0 H))
+  | @sqeven4 n0 i0 e0 s0 =>
+      DepElim.eq_simplification_sigma1_dep (S (S (S (S n0)))) (S (S (S (S (S (S n))))))
+        {| pr1 := BS (BS (BS (BS i0))); pr2 := even2 (even2 e0) |}
+        {| pr1 := BS (BS (BS (BS (BS (BS i))))); pr2 := even2 (even2 e) |}
+        (apply_noConfusion (S (S (S (S n0)))) (S (S (S (S (S (S n))))))
+           (apply_noConfusion (S (S (S n0))) (S (S (S (S (S n)))))
+              (apply_noConfusion (S (S n0)) (S (S (S (S n))))
+                 (apply_noConfusion (S n0) (S (S (S n)))
+                    (λ H : n0 = S (S n),
+                       DepElim.solution_left_dep (S (S n))
+                         (λ (i1 : bn (S (S n))) (e1 : even i1) (s1 : sqeven e1),
+                            DepElim.eq_simplification_sigma1_dep (BS (BS (BS (BS i1))))
+                              (BS (BS (BS (BS (BS (BS i)))))) (even2 (even2 e1)) (even2 (even2 e))
+                              (apply_noConfusion (BS (BS (BS (BS i1)))) (BS (BS (BS (BS (BS (BS i))))))
+                                 (apply_noConfusion (BS (BS (BS i1))) (BS (BS (BS (BS (BS i)))))
+                                    (apply_noConfusion (BS (BS i1)) (BS (BS (BS (BS i))))
+                                       (apply_noConfusion (BS i1) (BS (BS (BS i)))
+                                          (λ H0 : i1 = BS (BS i),
+                                             DepElim.solution_left_dep (BS (BS i))
+                                               (λ (e2 : even (BS (BS i))) (s2 : sqeven e2),
+                                                  apply_noConfusion (even2 (even2 e2))
+                                                    (even2 (even2 e))
+                                                    (apply_noConfusion (even2 e2) (even2 e)
+                                                       (λ H1 : e2 = e,
+                                                          DepElim.solution_left e (λ s3 : sqeven e, s3) e2 H1 s2)))
+                                               i1 H0 e1 s1))))))
+                         n0 H i0 e0 s0)))))
+  end eq_refl
+     : ∀ (n : nat) (i : bn n) (e : even (BS (BS i))), sqeven (even2 (even2 e)) → sqeven e
+
+*)
+
+
+
