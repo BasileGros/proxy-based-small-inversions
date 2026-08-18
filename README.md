@@ -52,6 +52,9 @@ It performs a small inversion in proof mode.
 
 The [Examples](./Examples) folder illustrates various use cases of proxy-based small inversions.
 
+- [tutorial_PBSI](./Examples/tutorial_PBSI.v)
+A tutorial on proxy-based small inversions.
+
 - [matrices](./Examples/matrices.v)
 showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq, using transposition of matrices as an example.
 
