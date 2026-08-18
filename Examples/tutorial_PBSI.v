@@ -205,10 +205,100 @@ Proof.
   - sinv nc2; sinv nc3; reflexivity.
 Qed.
 
-(** Now we consider a more advanced example:
+(* ================================================================== *)
+(** * Chapter 2: using PBSI in dependtly typed functions *)
+
+(** An emblematic depend type is length-indexed lists, aka vectors.
+    Here is its definition, with parameter A (the type of the elements)
+    and an index of type nat.
+    Remind that parameters have to be uniformly used in each
+    constructor, in contrast with indices. Here, the type of nil
+    is (vect A 0), whereas the type of (cons...) is (vect A (S n)) *)
+
+Inductive vect (A : Type) : nat -> Type :=
+| nil : vect A O
+| cons : A -> forall n, vect A n -> vect A (S n).
+
+(** In pattern-matching, only indices are relevant -- they are bound
+    in the "in" clause, in constrast with parameters, represented
+    by a wilcard "_" . *)
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for vect.
+Set Elimination Schemes (* For comfort *).
+
+(** The had and tail function make sense only for vectors with
+     a strictly positive length. *)
+
+Definition hd {A n} (u : vect A (S n)) : A :=
+  match invproxy u : vect_S A n with
+  | cons_S _ _ x u' => x
+  end.
+
+(* Equivalently, we can use a deconstructing let *)
+Definition tl {A n} (u : vect A (S n)) : vect A n :=
+  let (x, u') := (invproxy u : vect_S A n) in u'.
+
+(** However, sinv is not string enough for *reasoning* about
+    dependtly type programs such as hd and tl. *)
+Lemma make_hd_tl {A n} (u : vect A (S n)) : u = cons A (hd u) n (tl u).
+Proof.
+  sinv u as [x u'].
+  (** We see that, in the conclusion, u is not changed to (cons A x n u). *)
+Abort.
+
+(** The technical resason is that the return clause of the corresponding
+    pattern-matching construct references n but not the original vector.
+    What is needed is called dependent PBSI.
+ *)
+
+Unset Elimination Schemes (* For comfort *).
+Derive Dependent InvProxy for vect.
+Set Elimination Schemes (* For comfort *).
+
+Lemma make_hd_tl {A n} (u : vect A (S n)) : u = cons A (hd u) n (tl u).
+Proof.
+  sdinv u as [x u']. cbn. reflexivity.
+Qed.
+
+(** Dependent PBSI is actually a slight modification of PBSI,
+    that uses auxiliary inductive types containing an additional index
+    that reflects the original vector.
+    We will reference relevant publications ASAP for additional explanations,
+    but the idea canbe caught by looking at the definitions generated
+    by the above commands.
+    It is instructive to see:
+    - the basic auxiliary inductive types
+    - the corrresponding dependent auxiliary inductive types
+ *)
+
+Print vect_O.
+Print vect_O_dep.
+Print vect_S.
+Print vect_S_dep.
+
+(** The code of the dependent proxy itself looks more complicated,
+    but its computational contents is actually the same as before. *)
+
+Print vect_proxy.
+Print vect_dproxy.
+
+(** Here are more readable handcrafted definitions for those proxies,
+    for the curious reader. *)
+
+(* ================================================================== *)
+(** * Chapter 3: tuning PBSI *)
+
+(* ================================================================== *)
+(** * Chapter 4: making your developement independent from our plugin *)
+
+(* ================================================================== *)
+(** * Chapter 5: more advanced example(s) *)
+
+(** Now we consider a more interesting relation than the above nextcolor:
     the semantics of well-typed expressions.
-    This example is the source language provided in a famous
-    paper by Mc Carthy and Painter, 1967. *)
+    We use the source language provided in a famous paper by Mc Carthy
+    and Painter, 1967. *)
 
 (* Internalized Basic Types *)
 Variant ty : Set := Nat | Bool.
@@ -219,14 +309,17 @@ Definition value t : Set :=
   | Nat => nat
   end.
 
-(* Untyped expressions *)
+(* Untyped expressions, with constants,
+   addition and if-then-else expressions *)
 Inductive exp : Set :=
-| Val t (v : value t) : exp
+| Cst t (v : value t) : exp
 | Plus (e1 e2 : exp) : exp
 | Ifte (b : exp) (e1 e2 : exp) : exp.
 
+(** A binary relation between expressions and types:
+   (well_typed e t) means that expression e is weel-typed with type t *)
 Inductive well_typed : exp -> ty -> Prop :=
-| WTVal t (v : value t) : well_typed (Val t v) t
+| WTCst t (v : value t) : well_typed (Cst t v) t
 | WTPlus (e1 e2 : exp) :
   well_typed e1 Nat -> well_typed e2 Nat ->
   well_typed (Plus e1 e2) Nat
@@ -234,6 +327,10 @@ Inductive well_typed : exp -> ty -> Prop :=
   well_typed eb Bool -> well_typed e1 t -> well_typed e2 t ->
   well_typed (Ifte eb e1 e2) t.
 
+
+(* As for nextcolor, we will need to perform case analyses
+   on asssumptions of type (well_typed e t) where e is constructed,
+   but t is a variable *)
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for well_typed with index 0.
 Set Elimination Schemes (* For comfort *).
@@ -242,18 +339,19 @@ Set Elimination Schemes (* For comfort *).
     on expressions, then small inversion on well-typing.
     Note that here, both the tactic inversion and dependent
     elimination of Equations fail (complicated workarounds are
-    possible, anyway PBSI behaves much better. *)
+    possible, anyway PBSI behaves much better.
+    For convenience, we first write a draft version in interactive mode,
+    but it would be bad practice to consider this version as the definitive
+    one, see below. *)
+
 Module Script.
 
 #[refine]
 Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
   match e with
-  | Val t' v => fun w =>
-      _
-  | Plus e1 e2 => fun w =>
-      _
-  | Ifte eb e1 e2 => fun w =>
-      _
+  | Cst t' v => fun w =>  _
+  | Plus e1 e2 => fun w =>  _
+  | Ifte eb e1 e2 => fun w => _
   end.
 - sinv w. exact v.
 - Fail inversion w.
@@ -272,13 +370,13 @@ End Script.
     But the above definition uses tactics, whereas the tactic languqge
     is NOT in the TCB of Rocq.
     Fortunately PBSI can be used directly.
-    First, we can use "invprox w" with additional information *)
+    First, we can use "invproxy w" with additional information *)
 
-(** Advanced usage of PBSI, with classes *)
+(** Advanced usage of PBSI, using classes *)
 Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
   match e with
-  | Val t' v => fun w =>
-      let 'WTVal_Val _ _ in well_typed_Val _ _ t := invproxy w
+  | Cst t' v => fun w =>
+      let 'WTCst_Cst _ _ in well_typed_Cst _ _ t := invproxy w
       return value t in v
   | Plus e1 e2 => fun w =>
       let 'WTPlus_Plus _ _ w1 w2 in well_typed_Plus _ _ t := invproxy w
@@ -289,29 +387,29 @@ Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
       if semE eb wb then semE e1 w1 else semE e2 w2
   end.
 
-(** Second, we can refine our own proxy function, so that the code
+(** We can also refine our own proxy function, so that the code
     is even more explicit *)
 
 Module HandCrafted.
 
 Definition well_typed_dispatch e : ty -> Prop :=
   match e with
-  | Val t v => well_typed_Val t v
+  | Cst t v => well_typed_Cst t v
   | Plus e1 e2 => well_typed_Plus e1 e2
   | Ifte eb e1 e2 => well_typed_Ifte eb e1 e2
   end.
 
 Definition well_typed_sinv {e t} (w : well_typed e t) : well_typed_dispatch e t :=
   match w with
-  | WTVal t w =>  WTVal_Val t w
+  | WTCst t w =>  WTCst_Cst t w
   | WTPlus e1 e2 w1 w2 => WTPlus_Plus e1 e2 w1 w2
   | WTIfte eb e1 e2 t wb w1 w2 => WTIfte_Ifte eb e1 e2 t wb w1 w2
   end.
 
 Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
   match e with
-  | Val t' v => fun w =>
-      let 'WTVal_Val _ _ in well_typed_Val _ _ t := well_typed_sinv w 
+  | Cst t' v => fun w =>
+      let 'WTCst_Cst _ _ in well_typed_Cst _ _ t := well_typed_sinv w 
       return value t in v
   | Plus e1 e2 => fun w =>
       let 'WTPlus_Plus _ _ w1 w2 in well_typed_Plus _ _ t := well_typed_sinv w
@@ -323,12 +421,3 @@ Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
   end.
 
 End HandCrafted.
-
-(* ================================================================== *)
-(** * Chapter 2: using PBSI in dependtly typed functions *)
-
-(* ================================================================== *)
-(** * Chapter 3: tuning PBSI *)
-
-(* ================================================================== *)
-(** * Chapter 4: making your developement independent from our plugin *)
