@@ -7,6 +7,7 @@ From Equations Require Import Equations.
    In the experiments below, we use:
    - The Rocq Prover, version 9.1.0
    - The Equations plugin, opam package: rocq-equations 1.3.1+9.1
+   - MetaRocq, opam package 1.4.1+9.1
 
    PART 1 is a comparison of them on the same programming problem :
    map2 and its dependent version remap2, taken in the sibling file map2_around.v
