@@ -58,7 +58,8 @@ Inductive even : nat -> Prop :=
     output cleaner -- the keyword for the PAT should actually
     be "Variant" instead of "Inductive", because they are not recursive,
     even though the original inductive relation (even, here) is itself recursive.
-    This issue comes from MetaRocq <= 1.4.1+9.1 .
+    This issue comes from MetaRocq <= 1.4.1+9.1 and is slated to be fixed in the
+    next version released.
 *)
 
 Unset Elimination Schemes (* For comfort *).
@@ -79,7 +80,7 @@ Lemma even_cancel_S_S_draft n : even (S (S n)) -> even n.
 Proof. intro e. sinv e. exact H. Qed.
 
 (** As for the tactic destruct, it is good practice is to have an explicit name for
-    the H above, so that your sscript does not depend on the algorithm used by
+    the H above, so that your script does not depend on the algorithm used by
     Rocq for generating names.
     The syntax is the same as for destruct.
     In order to understand how many cases and, in each case, how many
@@ -233,9 +234,9 @@ Qed.
     but we postpone it to Chapter 5 *)
 
 (* ================================================================== *)
-(** * Chapter 2: using PBSI in dependtly typed functions *)
+(** * Chapter 2: using PBSI in dependently typed functions *)
 
-(** An emblematic depend type is length-indexed lists, aka vectors.
+(** An emblematic dependent type is length-indexed lists, aka vectors.
     Here is its definition, with parameter A (the type of the elements)
     and an index of type nat.
     Remind that parameters have to be uniformly used in each
@@ -256,7 +257,7 @@ Set Elimination Schemes (* For comfort *).
 (** In pattern-matching, only indices are relevant -- they are bound
     in the "in" clause, in constrast with parameters, represented
     by a wilcard "_" . Note that n is a component of cons,
-    whereas it is a parameter of vect_S, dand then no longer
+    whereas it is a parameter of vect_S, and then no longer
    a component of cons_S. *)
 
 Print cons_S.
@@ -289,8 +290,8 @@ Unset Asymmetric Patterns.
 Definition tl {A n} (u : vect A (S n)) : vect A n :=
   let (x, u') := (invproxy u : vect_S A n) in u'.
 
-(** However, sinv is not string enough for *reasoning* about
-    dependtly type programs such as hd and tl. *)
+(** However, sinv is not strong enough for *reasoning* about
+    dependently typed programs such as hd and tl. *)
 Lemma make_hd_tl {A n} (u : vect A (S n)) : u = cons A n (hd u) (tl u).
 Proof.
   sinv u as [x u'].
@@ -467,7 +468,7 @@ End Script.
     comes from the very body of the program that defines the function.
     In this case, semE can be used to state the correctness of a compiler.
     But the above definition uses tactics, whereas the tactic languqge
-    is NOT in the TCB of Rocq.
+    is NOT in the TCB of Rocq and does not have a properly defined semantic.
     Fortunately PBSI can be used directly.
     First, we can use "invproxy w" with additional information. *)
 
