@@ -391,13 +391,13 @@ Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
 
 (**
 The point to be detailed now is about distinguishing parameters and
-indices.  Although this seems a technical distinction, it is behind
-one of the importnat design choices of PBSI, and it also explains why
-PBSI may behave better than other approaches, as illustrated in
-Chapter 6.
+indices.  Although this may seems a boring technical distinction,
+it is behind one of the important design choices of PBSI, and it also
+explains why PBSI may behave better than other approaches, as illustrated
+in Chapter 6.
 
 This chapter can be skipped if you are in a hurry or if you are
-already familiar with parameter and indices.
+already familiar with parameters and indices.
 
 First, compare the above definition of even with the definition
 of the third PAT even_S_S :
@@ -559,10 +559,7 @@ Fixpoint half' n : even n -> {y | twice y = n} :=
                         exist _ (S h) (f_equal (fun x => S (S x)) E)
   end.
 
-A first issue is that the recursive call is not on n,
-but on the fresh n' provided by even_S_S':
-the guard condition would then be violated.
-Moreover, this n' raises an issue about Prop/Set elimination,
+However, we have an issue about Prop/Set elimination,
 as shown by the next attempt.
  *)
 
@@ -575,6 +572,34 @@ Fixpoint half' n : even n -> {y | twice y = n} :=
   end.
 Fail refine (let (n', e') := my_even_proxy' e in _).
 Abort.
+
+(**
+   We could then try a weaker version with a result of sort Prop
+   rather than Set.  We then see that the recursive call is not on n,
+   but on the fresh n' provided by even_S_S', with two additional issues:
+   - the guard condition would then be violated
+   - the remaining proof obligation is about n instead of n'.
+ *)
+
+#[refine]
+Fixpoint half' n : even n -> exists y, twice y = n :=
+  match n with
+  | O => fun _ => ex_intro _ O eq_refl
+  | 1 => fun e => match my_even_proxy' e with end
+  | S (S n) => fun e => let (n', e') := my_even_proxy' e in
+                        let (h, E) := half' n' e' in
+                        ex_intro _ (S h) _
+  end.
+Fail Guarded.
+Check (f_equal (fun x => S (S x)) E : twice (S h) = S (S n')).
+Abort.
+
+(** Those issues could be managed by introducing "n = n'" in the return clause
+    of the pattern matching of (my_even_proxy' e), and then using transport
+    functions from (P n) to (P n'), or conversely, with suitable types P.
+    All that effort is saved as soon as you use my_even_proxy instead of
+    my_even_proxy'.
+*)
 
 (* ================================================================== *)
 (** * Chapter 6: more advanced example(s) *)
