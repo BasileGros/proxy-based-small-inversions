@@ -31,10 +31,43 @@ Both of those steps are supported by automated tools, the first by
 various commands that customise the specialisation of the original
 inductive type into partial inductive types, the second in the form of
 tactics to be called in interactive mode.
+ *)
+
+
+(* ==================================================================*)
+(** * Cheat sheet *)
+
+(**
+  - Commands:
+    Derive [Dependent] InvProxy for YourType.
+    Derive [Dependent] InvProxy for YourType [with index 0,1, ...]
+                                             [with prefix String].
+
+    create_sinv_call YourTerm
+    create_sdinv_call YourTerm
+
+  - Tactics:
+    sinv YourAssumption.
+    sinv YourAssumption as [ ... | ... ].
+    sdinv YourAssumption.
+    sinv YourAssumption as [ ... | ... ].
+
+  - Programming constructs
+    match invproxy expr with
+    let (... ) := (invproxy expr : ExpectedPartialAlgebraicType) in
+    let (... ) := (YourType _ _).(invproxy) expr in
+    let 'YourConsructor ... := invproxy expr in
+
+    match (YourType _ _).(invproxy) expr with
+
+    match my_YourType_proxy expr with
+    let (... ) := my_YourType_proxy expr in
+
 *)
 
-(* ==================================================================
-*) (** * Chapter 1: using PBSI in interactive proof mode *)
+
+(* ==================================================================*)
+(** * Chapter 1: using PBSI in interactive proof mode *)
 
 (** Here, PBSI is used as an alternative to the well-known inversion
     tactic *)
@@ -207,6 +240,7 @@ Inductive nextcolor : color -> color -> Prop :=
 
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for nextcolor with index 0.
+   (** "with index" is explained in Chapter 3 *)
 Set Elimination Schemes (* For comfort *).
 
 Theorem nextcolor3 : forall c1 c2 c3 c4,
@@ -236,7 +270,7 @@ Qed.
     Chapter 6 *)
 
 (* ================================================================== *)
-(** * Chapter 2: using PBSI in dependently typed functions *)
+(** * Chapter 2: using PBSI in dependently typed programs *)
 
 (** An emblematic dependent type is length-indexed lists, aka vectors.
     Here is its definition, with parameter A (the type of the elements)
@@ -270,28 +304,53 @@ Print cons_S.
 (** Therefore, we have two wildcards for cons_S in the following
     pattern matching. *)
 
-Definition hdm {A n} (u : vect A (S n)) : A :=
-  match invproxy u : vect_S A n with
+Definition hd {A n} (u : vect A (S n)) : A :=
+  match invproxy u with
   | cons_S _ _ x u' => x
   end.
 
-(** Equivalently, we can use a deconstructing let *)
-Definition hd {A n} (u : vect A (S n)) : A :=
+(** Equivalently, you can use a deconstructing let.
+    However a naive attempt fails, because there is not enough
+    information to perform type inference *)
+Fail Definition hd_optimistic {A n} (u : vect A (S n)) : A :=
+  let (x, u') := (invproxy u) in x.
+
+(** You should then use one of the 3 more verbose following methods. *)
+
+(** Method 1: agnostic in the name of the constructor,
+    completely generic, by specifying the proxy instance to be used,
+    here vect_proxy, the name printed by "Derive InvProxy for vect. *)
+Definition hd_inst {A n} (u : vect A (S n)) : A :=
+  let (x, u') := (vect_proxy _ _ ).(invproxy) u in x.
+
+(** Method 2: agnostic in the name of the constructor,
+    by specifying the expected PAT,
+    here vect_S A n, where vect_S is the relevant name
+    printed by "Derive InvProxy for vect. *)
+Definition hd_PAT {A n} (u : vect A (S n)) : A :=
   let (x, u') := (invproxy u : vect_S A n) in x.
+
+  (** Method 3: deconstructing let that uses the name of the expected
+      constructor, here cons_S, as in the above "match invproxy u". *)
+Definition hd_cons {A n} (u : vect A (S n)) : A :=
+  let 'cons_S _ _ x u' := invproxy u in x.
 
 (** An additional possibility is to set "asymmetric patterns",
     so that the above wildcards are removed from patterns. *)
 
-(*
 Set Asymmetric Patterns.
-Definition hda {A n} (u : vect A (S n)) : A :=
+Definition hd_asym {A n} (u : vect A (S n)) : A :=
   match invproxy u : vect_S A n with
   | cons_S x u' => x
   end.
 
+Definition hd_cons_asym {A n} (u : vect A (S n)) : A :=
+  let 'cons_S x u' := invproxy u in x.
+
 (** Back to the default option of Rocq. *)
 Unset Asymmetric Patterns.
-*)
+
+(** For the tail, we pick one of the above methods. *)
 Definition tl {A n} (u : vect A (S n)) : vect A n :=
   let (x, u') := (invproxy u : vect_S A n) in u'.
 
@@ -339,7 +398,7 @@ Print vect_S_dep.
 Print vect_proxy.
 Print vect_dproxy.
 
-(** For the curious reader, here are more readable handcrafted definitions
+(** For the interested reader, here are more readable handcrafted definitions
     for those proxies, reusing the partial algebraic types automatically defined
     by our "Derive InvProxy" command. *)
 
@@ -367,6 +426,13 @@ Definition my_vect_dproxy {A n} (u : vect A n) : vect_dproxy_type A n u :=
   | cons _ n x u' => cons_S_dep A n x u'
   end.
 
+(** An advantage is that a deconstructing let raises no issue coming
+    from Rocq classes *)
+
+Definition hd_my {A n} (u : vect A (S n)) : A :=
+  let (x, u') := my_vect_proxy u in x.
+
+
 (** We now define our favorite example: map2, that is similar to map
     but, instead of a unary function, it applies a BINARY function
     to the elements of TWO vectors indexed by the SAME length. *)
@@ -383,8 +449,68 @@ Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
 (* ================================================================== *)
 (** * Chapter 3: tuning PBSI *)
 
+(**
+   Vectors have only one index, for their length. Given a vector u to
+   be analyzed by pattern matching, its index is in general an expression
+   of type nat.  If this expression is a variable, CIC pattern matching
+   is designed for this situation, just use it without making things any
+   more complicated.  This is exactly the case for the first argument
+   in the map2 function above.
+   Indeed, trying to use PBSI in this situation does not make sense,
+   because the type of (my_vect_proxy u), that is,
+   vect_proxy_type A n, does not reduce further than
+   match n with  0 => vect_O A  |  S n => vect_S A n  end.
+   Then you don't know if you should a pattern for vect_O or for vect_S.
+   This is rather clear if you write directly your program.
+   If you are in interactive mode, either because you are designing your
+   program, or because your target is not a program, but a proof,
+   you may try our tactic sinv.  This will result in a typical error
+   message "Not an inductive definition", as in the following scenario,
+   followed by a small number of additional explanatory commands.
+ *)
+
+#[refine]
+Fixpoint map2_stupid {A B C} (f : A -> B -> C) {n} (u : vect A n) :
+  vect B n -> vect C n := _.
+Fail sinv u. (* the promised error message *)
+Fail destruct (invproxy u). (* The effect of "sinv u" *)
+(* Its type is as follows (not easy to guess, but correct) *)
+Check invproxy u : (vect_proxy A n).(invproxy_type).
+Compute (vect_proxy A n).(invproxy_type). (* Hence the error message *)
+  
+(**
+   In other words, you don't have relevant information on n to be used
+   by PBSI.
+
+   Now, if the index of u is "constructed", that is, if it O or (S n)
+   for some n -- or if it is convertible to one ot those two shapes --
+   the type of (invproxy u) will reduce to vect_O or to vect_S n,
+   respectively (with an implicit parameter, say A)
+   and in either case, it can be properly decomposed.
+
+   In summary, the relevant pattern matching expression will be
+   match u with..., if the index of u if a variable
+   or match invproxy u with ..., if the index of u is constructed.
+
+   For types with 2 indices, the same binary question should be
+   asked for each index, so that we have 4 possibilities, that is
+   3 possibilities for a proxy, that could expect:
+   - 2 constructed indices
+   - or 1 constructed index only (2 possibilities)
+   In theory, all possibilities can make sense. In practice, we derive
+   the desired proxy only for the needed situation.
+   For example, in the case of nextcolor seen above, only the first
+   index is constructed. Indices are numbered 0, 1...
+   Therefore, we used:
+   
+   Derive InvProxy for nextcolor with index O.
+ *)
+
+(** TO BE COMPLETED: create_sinv_call YourTerm *)
+
+
 (* ================================================================== *)
-(** * Chapter 4: making your development independent from our plugin *)
+(** * Chapter 4: making your development independent from our plugin  *)
 
 (* ================================================================== *)
 (** * Chapter 5: on the relevance of parameters *)
