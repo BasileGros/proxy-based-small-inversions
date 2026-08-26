@@ -2,11 +2,6 @@ Proxy-based small inversions (PBSI) are an alternative to the `inversion` and `d
 with the goal of obtaining small, easily explainable CIC terms.
 They are also useful for defining programs with dependent types and developing formal proofs about them.
 
-We assume a (co)inductively defined type $T$, defined using the keywords
-`Inductive`, `CoInductive` or just `Variant`.
-In what follows, we use the term “algebraic type” to encompass these possibilities.
-Proxy-based small inversions (PBSI) are based on specialised versions of $T$ according to the values (more precisely, the patterns) of the algebraic indices of $T$.
-
 # Installation and compilation
 This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
 Using opam, the following command should compile and install the plugin.
@@ -21,11 +16,16 @@ opam pin git+ssh://git@github.com/BasileGros/proxy-based-small-inversions.git
 For more details, see [INSTALL.md](./INSTALL.md).
 
 # Usage
-Import the plugin with the command
+In your Rocq file, import the plugin with the command
 
 ```coq
 From SmallInversion Require Import small_inversion.
 ```
+
+We assume a (co)inductively defined type $T$, defined using the keywords
+`Inductive`, `CoInductive` or just `Variant`.
+In what follows, we use the term “algebraic type” to encompass these possibilities.
+Proxy-based small inversions (PBSI) are based on specialised versions of $T$ according to the values (more precisely, the patterns) of the algebraic indices of $T$.
 
 Proxy-based small inversions are used in two steps.
 First, call the preliminary command:  
