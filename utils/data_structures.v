@@ -6,7 +6,9 @@ From utils Require Import list_functions.
 From utils Require Import error_monad.
 From utils Require Import TM_functions.
 From utils Require Import term_printer.
-(*All information necessary to pass between transformations*)
+
+
+(*Modified records of the inductive types that are not nested constructor_body ∈ one_inductive_body ∈ mutual_inductive_body*)
 
 Record pseudo_mib : Type :=
   Build_pseudo_mib
@@ -16,6 +18,7 @@ Record pseudo_mib : Type :=
       pseudo_universes : universes_decl;
       pseudo_variance : option (list Variance.t) }.
 
+(*Print function for debug purposes*)
 Definition pPseudo_mib
   (Σ : global_env)
   (Γ : context)
@@ -55,7 +58,7 @@ Fixpoint pOptionConstructors
 " ^ pOptionConstructors Σ Γ tl
   end.
 
-  
+ (*Add a prefix and a suffix to an oib*)
 Definition rename_poib (prefix : string)(suffix: string)(poib : pseudo_oib)
   : pseudo_oib :=
   {|
@@ -68,6 +71,7 @@ Definition rename_poib (prefix : string)(suffix: string)(poib : pseudo_oib)
     pseudo_relevance := poib.(pseudo_relevance)
   |}.
 
+(*THe record of all information passed between transformations*)
 Record transformation_info : Type :=
   mkTransformationInfo {
       inductive_transfo : inductive;
@@ -87,7 +91,7 @@ Record transformation_info : Type :=
       isdep : bool
     }.
 
-(*Un pretty printer de certaines infos de transfo info, pour le reste, utiliser eval_print*)
+(*A pretty printer of some data in transformation_info, the reminder is accessible using eval_print*)
 Definition pTransfo_info
   (Σ : global_env)
   (Γ : context)
@@ -97,7 +101,9 @@ Definition pTransfo_info
 " ^ "pmib : " ^ pPseudo_mib Σ Γ t.(pmib) ^ "
 " ^ "poib : " ^ pPseudo_oib Σ Γ t.(poib) ^ "
 " ^ "constructors : " ^ pOptionConstructors Σ Γ t.(lctors).
-    
+
+
+(*Conversion functions*)
 Definition pseudo_mib_of_mib
   (mib : mutual_inductive_body) : pseudo_mib :=
   {|
@@ -177,16 +183,3 @@ Definition recreate_transfo_info
       isdep := isdep transfo_info
     |} in
   new_transfo_info.
-
-
-
-
-
-(** Tree structure to aggregate then flatten info from different recursive subcalls*)
-Inductive tree (A:Type) :Type  :=
-| node: A -> list (tree A) -> tree A
-| leaf: tree A.
-
-Arguments node {A}.
-Arguments leaf {A}.
-

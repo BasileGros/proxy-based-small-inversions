@@ -40,6 +40,7 @@ Definition deparameterisation_oib  (transfo_info : transformation_info) : pseudo
     pseudo_relevance := poib.(pseudo_relevance)
   |}.
 
+(*Fixes the number of parameters to zero and empty their list in the mib*)
 Definition deparameterisation_mib (transfo_info : transformation_info) : pseudo_mib :=
   
   let pmib := pmib transfo_info in

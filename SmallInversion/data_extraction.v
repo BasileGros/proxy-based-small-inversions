@@ -1,3 +1,5 @@
+(** * Extracting all of the initial informations needed to perform PBSI.*)
+
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
@@ -21,9 +23,9 @@ Definition data_extraction_error
   match lookup_mind_decl (modpath_R,ident_R) env_R.(declarations) with
   |None => Error "Anomaly : mib of relation not found in the environment"
   |Some mib_R =>
-     (*TODO if necessary, change the universe levels in the AST*)
+     (*TODO if necessary, change the universe levels in the AST to fresh ones*)
      let univ_mib_R := (*universalisation_mib*) mib_R in
-     (*Get the AST of the inductive type from the AST of the MIT*)
+     (*Get the AST of the inductive type from the AST of the mutually inductive type*)
      oib_R <-? one_inductive_body_from_mib univ_mib_R index_R;;
      (*A letin telescope of the different inductive types in the mutually inductive type, for derecursivation.*)
      let telescope_oib_R :=
@@ -75,6 +77,7 @@ Definition data_extraction_error
      in
      Success (derec_transfo_info)
   end.
+
 
 (*Wraps the extraction of the data necessary for the inversion in MetaCoq's TemplateMonad*)
 Definition data_extraction{X}
