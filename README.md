@@ -1,6 +1,5 @@
-Proxy-based small inversions (PBSI) are an alternative to the `inversion` and `dependent elimination` tactics in Rocq.
-They are designed to minimize the size of terms.
-In particular, the latter are not cluttered by additional equality constraints.
+Proxy-based small inversions (PBSI) are an alternative to the `inversion` and `dependent elimination` tactics in Rocq,
+with the goal of obtaining small, easily explainable CIC terms.
 They are also useful for defining programs with dependent types and developing formal proofs about them.
 
 We assume a (co)inductively defined type $T$, defined using the keywords
