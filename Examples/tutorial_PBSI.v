@@ -173,7 +173,7 @@ Proof.
   (** The command "Derive InvProxy for even." actually also generated
       a proxy for even, named "even_proxy", which is itself registered
       as an instance of a Rocq class, so that sinv uses the proxy
-      for the relevant relation, so that "sinv e" is nothing else than
+      for the relevant relation.  Indeed, "sinv e" is nothing else than
       "destruct (invproxy e)".
       A case analysis on (invproxy e) will then keep the only
       relevant case, corresponding to the constructor even2. *)
@@ -186,7 +186,7 @@ Qed.
     even2_S_S, in contrast with even2; we then did not write
     "as [n' e']" but just "as [e']"; more importantly, this is
     why the link with other occurrences of n in the goal is kept.
-    The curious reader will find more details on this aspect in Chapter 5.
+    The interested reader will find more details on this aspect in Chapter 5.
 *)
 
 (** Some explanations regarding Lemma no_even_1 above. *)
@@ -254,7 +254,7 @@ Print even_cancel_S_S_inversion.
 (** In the above example, even is a unary predicate.
     In the presence of n-ary relations, some tuning is generally
     needed.  This is considered below in Chapter 3 for simple situations,
-    then Chapter 7 for more advanced cases.
+    then in Chapter 7 for more demanding cases.
 *)
 
 
@@ -286,7 +286,7 @@ Set Elimination Schemes (* For comfort *).
     in the "in" clause, in constrast with parameters, represented
     by a wilcard "_" . Note that n is a component of cons,
     whereas it is a parameter of vect_S, and then no longer
-   a component of cons_S. *)
+    a component of cons_S. *)
 
 Print cons_S.
 
@@ -298,9 +298,14 @@ Definition hd {A n} (u : vect A (S n)) : A :=
   | cons_S _ _ x u' => x
   end.
 
+(* ---------------------------------------------------------------------- *)
+(** ** Deconstructing let *)
+
+(** This section can be skipped at first reading *)
+
 (** Equivalently, you can use a deconstructing let.
     However a naive attempt fails, because there is not enough
-    information to perform type inference *)
+    information to perform type inference. *)
 Fail Definition hd_optimistic {A n} (u : vect A (S n)) : A :=
   let (x, u') := (invproxy u) in x.
 
@@ -339,6 +344,9 @@ Definition hd_cons_asym {A n} (u : vect A (S n)) : A :=
 (** Back to the default option of Rocq. *)
 Unset Asymmetric Patterns.
 
+(* ---------------------------------------------------------------------- *)
+(** ** Formal proofs about dependently typed programs *)
+
 (** For the tail, we pick one of the above methods. *)
 Definition tl {A n} (u : vect A (S n)) : vect A n :=
   let (x, u') := (invproxy u : vect_S A n) in u'.
@@ -351,7 +359,7 @@ Proof.
   (** We see that, in the conclusion, u is not changed to (cons A n x u'). *)
 Abort.
 
-(** The technical resason is that the return clause of the corresponding
+(** The technical reason is that the return clause of the corresponding
     pattern-matching construct references n but not the original vector.
     What is needed is called dependent PBSI.
  *)
@@ -368,7 +376,7 @@ Qed.
 (** Dependent PBSI is actually a slight modification of PBSI,
     that uses partial algebraic types containing an additional index
     that reflects the original vector.
-    We will reference relevant publications ASAP for additional explanations,
+    Additional explanations can be found in our LPAR-26 paper,
     but the idea can be caught by looking at the definitions generated
     by the above commands.
     It is instructive to see:
@@ -387,8 +395,8 @@ Print vect_S_dep.
 Print vect_proxy.
 Print vect_dproxy.
 
-(** For the interested reader, here are more readable handcrafted definitions
-    for those proxies, reusing the partial algebraic types automatically defined
+(** Here are more readable handcrafted definitions for those proxies,
+    reusing the partial algebraic types automatically defined
     by our "Derive InvProxy" command. *)
 
 Definition vect_proxy_type A n : Type :=
@@ -415,14 +423,16 @@ Definition my_vect_dproxy {A n} (u : vect A n) : vect_dproxy_type A n u :=
   | cons _ n x u' => cons_S_dep A n x u'
   end.
 
-(** An advantage is that a deconstructing let raises no issue coming
-    from Rocq classes *)
+(** An advantage of handcrafted proxies is that a deconstructing let raises
+    no issue coming from Rocq classes *)
 
 Definition hd_my {A n} (u : vect A (S n)) : A :=
   let (x, u') := my_vect_proxy u in x.
 
+(* ---------------------------------------------------------------------- *)
+(** ** Defining map2 *)
 
-(** We now define our favorite example: map2, that is similar to map
+(** We now define our favorite example: map2.  It is similar to map
     but, instead of a unary function, it applies a BINARY function
     to the elements of TWO vectors indexed by the SAME length. *)
 
@@ -439,7 +449,7 @@ Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
 (** * Chapter 3: simple tuning of PBSI *)
 
 (**
-   Vectors have only one index, for their length. Given a vector u to
+   Vectors have only one index, for their length.  Given a vector u to
    be analyzed by pattern matching, its index is in general an expression
    of type nat.  If this expression is a variable, CIC pattern matching
    is designed for this situation, just use it without making things any
