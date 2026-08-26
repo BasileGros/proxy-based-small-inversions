@@ -16,9 +16,6 @@ This step only needs to be performed once.
 
 Both of those steps are supported by automated tools, the first by various commands that customise the specialisation of the original inductive type into partial inductive types, the second in the form of tactics to be called in interactive mode.
 
-
-To learn more about proxy-based small inversions, see [here](https://hal.science/hal-05469909).
-
 # Installation and compilation
 This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
 Should opam be installed, the following command should compile and install the plugin.
@@ -50,7 +47,7 @@ Then, in proof mode, you can call the tactic `sinv x` where x is the assumption
 (more generally: the term) to invert.
 
 For an introduction, you can find many more details in
-[tutorial_PBSI](./Examples/tutorial_PBSI.v) .
+[tutorial_PBSI.v](./Examples/tutorial_PBSI.v) .
 
 The [Examples](./Examples) folder illustrates various use cases of proxy-based small inversions.
 
@@ -85,6 +82,9 @@ by Poulsen et al., POPL 2018.
 - [stlc_viewleft_handcrafted](./Examples/stlc_viewleft_handcrafted.v)
 presents the "extended example" developed in the last section of
    "The view from the left" by McBride & McKinna, JFP 2004.
+
+
+To learn more about proxy-based small inversions, see [here](https://hal.science/hal-05469909).
 
 # Authors
 Pierre Corbineau  
