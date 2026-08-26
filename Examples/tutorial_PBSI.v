@@ -97,7 +97,7 @@ Inductive even : nat -> Prop :=
  *)
 
 (** "Unset/Set Elimination Schemes" is not mandatory, it justs makes the
-    output cleaner -- the keyword for the PAT should actually
+    output cleaner -- the keyword for the PATs should actually
     be "Variant" instead of "Inductive", because they are not recursive,
     even though the original algebraic relation (even, here) is itself recursive.
     This issue comes from MetaRocq <= 1.4.1+9.1 and it should be fixed in the
@@ -107,7 +107,7 @@ Inductive even : nat -> Prop :=
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for even.
 (** This defines:
-    - a number of PAT for even.
+    - a number of PATs for even.
       Here: even_O, even_S_O and even_S_S.
     - a proxy function that gather them, here even_proxy.
     It is instructive -- and recommended -- to see the contents
