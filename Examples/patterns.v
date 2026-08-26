@@ -65,7 +65,7 @@ Proof.
 Qed.
 
 (* As finding the correct pattern can be tricky, we also provide the command
-   "create_sinv_call y" that, for a given inductively typed term y, prints
+   "Create_sinv_call y" that, for a given inductively typed term y, prints
    an invocation to "Derive InvProxy" with a suitable pattern for this y.
    It can only be used in interactive proof mode.
    Let us restart just before the definition of FAKE again. *)
@@ -75,7 +75,7 @@ Reset FAKE.
 Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
 Proof.
   intro l.
-  create_sinv_call l.
+  Create_sinv_call l.
   (* We get :
 Derive InvProxy for le2 with pattern (pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
    *)
