@@ -9,11 +9,11 @@ From SmallInversion Require Import small_inversion.
 
 (** Proxy-based small inversions derive specialised versions of an
 inductive type $T$ according to the values (more precisely, the
-patterns) of the inductive indices of $T$, so that filtering on a term
+patterns) of inductive indices of $T$, so that filtering on a term
 of type $T$ takes into account its particular form, i.e., the
 constructors used in its indices.
 
-They work in two steps:
+PBSI work in two steps:
 
 - First, defining suitable partial inductive types, which mimic the
   original inductive type $T$ depending on constructors used for one
@@ -28,7 +28,7 @@ They work in two steps:
   program).
 
 Both of those steps are supported by automated tools, the first by
-various commands that customise the specialisation of the original
+a command with options that customise the specialisation of the original
 inductive type into partial inductive types, the second in the form of
 tactics to be called in interactive mode.
  *)
@@ -43,8 +43,8 @@ tactics to be called in interactive mode.
     Derive [Dependent] InvProxy for YourType [with index 0,1, ...]
                                              [with prefix String].
 
-    create_sinv_call YourTerm
-    create_sdinv_call YourTerm
+    Create_sinv_call YourTerm
+    Create_sdinv_call YourTerm
 
   - Tactics:
     sinv YourAssumption.
@@ -65,6 +65,18 @@ tactics to be called in interactive mode.
 
 *)
 
+(* ==================================================================*)
+(** Summary
+
+Chapter 1: using PBSI in interactive proof mode
+Chapter 2: using PBSI in dependently typed programs
+Chapter 3: simple tuning of PBSI
+Chapter 4: making your development independent from our plugin
+Chapter 5: on the relevance of parameters
+Chapter 6: more advanced example(s)
+Chapter 7: advanced tuning of PBSI
+
+*)
 
 (* ==================================================================*)
 (** * Chapter 1: using PBSI in interactive proof mode *)
@@ -81,18 +93,19 @@ Inductive even : nat -> Prop :=
 (** Inversion is needed when we have assumptions (even X), where X is
     not a variable but, for instance O, (S O), (S (S ...)) *)
 
-(** The following command is needed in order to have PBSI for even.
-    Its effect is to define some auxiliary inductive types, that we
-    call "partial inductive types" (PAT).  They are derived from the definition
-    of even, as well as a proxy function for even called even_proxy (by default).
+(** The following command is required to make PBSI available for even.
+    Its effect is to define some auxiliary inductive predicates (or types),
+    that we call "partial inductive types" (PAT).  They are derived from the
+    definition of even, as well as a proxy function for even called even_proxy
+    (by default).
  *)
 
 (** "Unset/Set Elimination Schemes" is not mandatory, it justs makes the
     output cleaner -- the keyword for the PAT should actually
     be "Variant" instead of "Inductive", because they are not recursive,
     even though the original inductive relation (even, here) is itself recursive.
-    This issue comes from MetaRocq <= 1.4.1+9.1 and is slated to be fixed in the
-    next version released.
+    This issue comes from MetaRocq <= 1.4.1+9.1 and it should be fixed in the
+    next release.
 *)
 
 Unset Elimination Schemes (* For comfort *).
@@ -118,7 +131,7 @@ Proof. intro e. sinv e. exact H. Qed.
     The syntax is the same as for destruct.
     In order to understand how many cases and, in each case, how many
     components you get, you shoud guess what is the relevant PAT.
-    Looking at e, we guess that this is even_S_S, then one case
+    Looking at e, we guess that this is even_S_S, that contains only one case
     with one component, of type (even n).
     We give more details below in Lemma even_cancel_S_S_explanation.
 *)
@@ -140,8 +153,9 @@ Proof.
 Qed.
 
 (** Explanation *)
-(** Reminder : the argument of even is called an index
-    (we have an indexed family of types) *)
+(** Reminder on the vocabulary : the argument of even is called an index.
+    Indeed, in a proof-as-types setting, an inductive predicate like even
+    is seen as an indexed family of types. *)
 Lemma even_cancel_S_S_explanation n : even (S (S n)) -> even n.
 Proof.
   intro e.
@@ -160,21 +174,26 @@ Proof.
   (** We also have (see below) :  even (S (S n) -> even_S_S n.
       A proof term for this implication is provided by invproxy. *)
   Check (invproxy e : even_S_S n).
-  (** Actually, "sinv e" is nothing else than "destruct (invproxy e)".
+  (** The command "Derive InvProxy for even." actually also generated
+      a proxy for even, named "even_proxy", which is itself registered
+      as an instance of a Rocq class, so that sinv uses the proxy
+      for the relevant relation, so that "sinv e" is nothing else than
+      "destruct (invproxy e)".
       A case analysis on (invproxy e) will then keep the only
-      relevant case, corresponding to the constructor even2.
-      A more technical remark:
-      as n is a parameter of even_S_S, it is not a component of
-      even2_S_S, in contrast with even2; we then do not write
-      "as [n' e']" but just "as [e']"; more importantly, this is
-      why the link with other occurrences of n in the goal is kept.
-      The curious reader will find more details on this aspect below. *)
+      relevant case, corresponding to the constructor even2. *)
   destruct (invproxy e) as [e'].
-  (** In summary, "sinv e" is nothing else than a shortcut for
-      "destruct (invproxy e)" *)
   exact e'.
 Qed.
 
+(** A more technical remark:
+    as n is a parameter of even_S_S, it is not a component of
+    even2_S_S, in contrast with even2; we then did not write
+    "as [n' e']" but just "as [e']"; more importantly, this is
+    why the link with other occurrences of n in the goal is kept.
+    The curious reader will find more details on this aspect in Chapter 5.
+*)
+
+(** Some explanations regarding Lemma no_even_1 above. *)
 Lemma no_even_1_explanation : even 1 -> False.
 Proof.
   intro e.
@@ -186,13 +205,15 @@ Proof.
   destruct (invproxy e).
 Qed.
 
-(**
-   The command "Derive InvProxy for even." also generates a
-   proxy for even, named "even_proxy", which is itself registered
-   as an instance of a Rocq class, so that sinv uses the proxy
-   for the relevant relation.
-   You can print even_proxy. You could then redefine it in a more
-   readable manner as follows, starting wit its type. *)
+(** You can print even_proxy.
+    It has two fields: invproxy_type and invproxy, but unfortunately
+    readability is impaired because the body of invproxy_type is inlined
+    in invproxy. *)
+
+Print even_proxy.
+
+(** You could then redefine it in a more readable manner as follows,
+    starting with its type. *)
 
 Definition even_proxy_type n :=
   match n with
@@ -209,11 +230,14 @@ Definition my_even_proxy {n} (e : even n) : even_proxy_type n :=
   end.
 
 (** Then observe on the following scenario that you get a
-    reasonably explicit and explainable proof of even_cancel_S_S,
-    in contrast with what you would get with "inversion" *)
+    reasonably explicit controllable and explainable proof
+    of even_cancel_S_S, in contrast with what you would get
+    with "inversion". *)
 Lemma even_cancel_S_S_handcrafted n : even (S (S n)) -> even n.
 Proof.
   intro e.
+  (* We can directly go to the "destruct" command below,
+     but let us proceed slowly. *)
   Check (my_even_proxy e).
   Eval cbn in (even_proxy_type (S (S n))).
   Check (my_even_proxy e : even_S_S n).
@@ -221,53 +245,22 @@ Proof.
   exact e'.
 Qed.
 
-(* ----------------------------------------------------------------- *)
-(** ** Small inversion on a single index of a binary relation *)
+Print even_cancel_S_S_handcrafted.
 
-(** Examples with a binary relation R, with an assumption R x y
-    where x is known but y is free.
-    Indices are numbered from 0 : 0, 1, ...
-    Then we will use Derive InvProxy for R with index 0.  *)
-
-(** We start with a very simple relation *)
-
-Inductive color := Red | Orange | Green.
-
-Inductive nextcolor : color -> color -> Prop :=
-| ncGO : nextcolor Green Orange
-| ncOR : nextcolor Orange Red
-| ncRG : nextcolor Red Green.
-
-Unset Elimination Schemes (* For comfort *).
-Derive InvProxy for nextcolor with index 0.
-   (** "with index" is explained in Chapter 3 *)
-Set Elimination Schemes (* For comfort *).
-
-Theorem nextcolor3 : forall c1 c2 c3 c4,
-    nextcolor c1 c2 -> nextcolor c2 c3 ->  nextcolor c3 c4 ->
-    c4 = c1.
+Lemma even_cancel_S_S_inversion n : even (S (S n)) -> even n.
 Proof.
-  intros c1 c2 c3 c4 nc1 nc2 nc3.
-  (* We have 3 cases for the first assumption, forcing c2 to
-  have a fixed value. *)
-  destruct nc1 as [ | | ].
-  - (* Only 1 case is left for nc2, provided we use (small) inversion;
-       in turn, c3 becomes constrained to be a specific value *)
-    sinv nc2.
-    (** Explanation *)
-    Undo.
-    Check (invproxy nc2 : nextcolor_Orange c3).
-    Print nextcolor_Orange.
-    destruct (invproxy nc2).
-    (* Similarly for nc3 *)
-    sinv nc3. reflexivity.
-   (* The remaining subgoals are proved in the same way *)
-  - sinv nc2; sinv nc3; reflexivity.
-  - sinv nc2; sinv nc3; reflexivity.
+  intro e. inversion e. assumption.
 Qed.
 
-(** A more interesting example in this category is postponed to
-    Chapter 6 *)
+Print even_cancel_S_S_inversion.
+
+(* ----------------------------------------------------------------- *)
+(** In the above example, even is a unary predicate.
+    In the presence of n-ary relations, some tuning is generally
+    needed.  This is considered below in Chapter 3 for simple situations,
+    then Chapter 7 for more advanced cases.
+*)
+
 
 (* ================================================================== *)
 (** * Chapter 2: using PBSI in dependently typed programs *)
@@ -447,7 +440,7 @@ Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
   end.
 
 (* ================================================================== *)
-(** * Chapter 3: tuning PBSI *)
+(** * Chapter 3: simple tuning of PBSI *)
 
 (**
    Vectors have only one index, for their length. Given a vector u to
@@ -474,10 +467,12 @@ Fixpoint map2_stupid {A B C} (f : A -> B -> C) {n} (u : vect A n) :
   vect B n -> vect C n := _.
 Fail sinv u. (* the promised error message *)
 Fail destruct (invproxy u). (* The effect of "sinv u" *)
-(* Its type is as follows (not easy to guess, but correct) *)
+(* Its type is as follows, using the syntax of classes:
+   vect_proxy has 2 arguments, then take the invproxy_type field. *)
 Check invproxy u : (vect_proxy A n).(invproxy_type).
 Compute (vect_proxy A n).(invproxy_type). (* Hence the error message *)
-  
+Abort.
+
 (**
    In other words, you don't have relevant information on n to be used
    by PBSI.
@@ -488,29 +483,350 @@ Compute (vect_proxy A n).(invproxy_type). (* Hence the error message *)
    respectively (with an implicit parameter, say A)
    and in either case, it can be properly decomposed.
 
-   In summary, the relevant pattern matching expression will be
-   match u with..., if the index of u if a variable
-   or match invproxy u with ..., if the index of u is constructed.
+   In summary, the relevant pattern matching expression to be used is
+   match u with..., if the index of u if a variable, and
+   match invproxy u with ..., if the index of u is constructed.
+*)
 
-   For types with 2 indices, the same binary question should be
+(**
+   For types or relations with 2 indices, the same binary question should be
    asked for each index, so that we have 4 possibilities, that is
    3 possibilities for a proxy, that could expect:
    - 2 constructed indices
    - or 1 constructed index only (2 possibilities)
    In theory, all possibilities can make sense. In practice, we derive
    the desired proxy only for the needed situation.
-   For example, in the case of nextcolor seen above, only the first
-   index is constructed. Indices are numbered 0, 1...
-   Therefore, we used:
-   
-   Derive InvProxy for nextcolor with index O.
+   Let us illustrate this on the following binary relation nextcolor.
+*)
+
+Inductive color := Red | Orange | Green.
+
+Inductive nextcolor : color -> color -> Prop :=
+| ncGO : nextcolor Green Orange
+| ncOR : nextcolor Orange Red
+| ncRG : nextcolor Red Green.
+
+(** By default, the Derive InvProxy command build proxies for the
+    situations where all indices (2, here) are constructed. *)
+
+Definition FAKE := Prop.
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for nextcolor.
+Set Elimination Schemes (* For comfort *).
+
+(** However this is not relevant in the next lemma. *)
+
+Lemma between_Green_Red c : nextcolor Green c -> nextcolor c Red.
+Proof.
+  intro nc. Fail sinv nc.
+  (* We get the infamous "Not an inductive definition" explained above,
+     because the second index of nc is a variable. *)
+Abort.
+
+(** Let us the tune our proxy, using "with index 0" :
+    Indices are numbered 0, 1... (n-1) for an n-ary relation or type. *)
+
+Reset FAKE.
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for nextcolor with index 0.
+Set Elimination Schemes (* For comfort *).
+
+Lemma between_Green_Red c : nextcolor Green c -> nextcolor c Red.
+Proof.
+  intro nc.
+  sinv nc.
+  (** Let us go slowly. *)
+  Undo.
+  Check (invproxy nc : nextcolor_Green c).
+  Print nextcolor_Green.
+  destruct (invproxy nc).
+  constructor.
+Qed.
+
+(** Here is a lemma with an ordinary destrcut followed by two PBSI. *)
+
+Theorem nextcolor3 : forall c1 c2 c3 c4,
+    nextcolor c1 c2 -> nextcolor c2 c3 ->  nextcolor c3 c4 ->
+    c4 = c1.
+Proof.
+  intros c1 c2 c3 c4 nc1 nc2 nc3.
+  (* We have 3 cases for the first assumption, forcing c2 to
+  have a fixed value. *)
+  destruct nc1 as [ | | ].
+  - (* Only 1 case is left for nc2, provided we use (small) inversion;
+       in turn, c3 becomes constrained to be a specific value *)
+    sinv nc2.
+    (* Similarly for nc3 *)
+    sinv nc3. reflexivity.
+   (* The remaining subgoals are proved in the same way *)
+  - sinv nc2; sinv nc3; reflexivity.
+  - sinv nc2; sinv nc3; reflexivity.
+Qed.
+
+(** The general command "Derive InvProxy for T" specialises the
+inductive type over all *useful* indices -- technically: all indices
+that take the form of a constructor in the conclusion of the
+constructors of T.
+*)
+
+(* ---------------------------------------------------------------------- *)
+(** ** Playing with different proxies for the same relation *)
+
+(** Suppose that we aim at a theorem similar to nextcolor3,
+    but using nextcolor in the opposite direction. *)
+
+Definition FAKE := Prop.
+
+Theorem prevcolor3_Red : forall c1 c2 c3,
+    nextcolor c3 Red -> nextcolor c2 c3 -> nextcolor c1 c2 ->
+    Red = c1.
+Proof.
+  intros c1 c2 c3 nc3 nc2 nc1.
+  (* The next command fails because index 0 of nc3 is a variable *)
+  Fail sinv nc3.
+Abort.
+
+(** We actually need "Derive InvProxy for nextcolor with index 1." *)
+Unset Elimination Schemes (* For comfort *).
+(** Unfortunately, we get a name conflict *)
+Fail Derive InvProxy for nextcolor with index 1.
+(** In this situation, just use the option "with prefix" completed
+    by a string of your choice. *)
+Derive InvProxy for nextcolor with index 1 with prefix "nc1".
+Set Elimination Schemes (* For comfort *).
+
+Theorem prevcolor3_Red : forall c1 c2 c3,
+    nextcolor c3 Red -> nextcolor c2 c3 -> nextcolor c1 c2 ->
+    Red = c1.
+Proof.
+  intros c1 c2 c3 nc3 nc2 nc1.
+  (* Now sinv is working properly *)
+  sinv nc3. sinv nc2. sinv nc1.
+  reflexivity.
+Qed.
+
+(** Another possibility is to use the general option "with pattern" of
+    "Derive InvProxy". Its syntax is rather technical, it is actually meant
+    to be used in combination with a helper command called Create_sinv_call.
+    For completeness, we illustrate this option for our current example,
+    though "with index" is the most reasonable choice here.
+    More relevant uses of "with pattern" are given in Chapter 7.
+    First we go back to the state juste before the definition FAKE.
  *)
 
-(** TO BE COMPLETED: create_sinv_call YourTerm *)
+Reset FAKE.
+
+Theorem prevcolor3_Red : forall c1 c2 c3,
+    nextcolor c3 Red -> nextcolor c2 c3 -> nextcolor c1 c2 ->
+    Red = c1.
+Proof.
+  intros c1 c2 c3 nc3 nc2 nc1.
+  (* Generating a customized proxy for nc3 *)
+  Create_sinv_call nc3.
+  (* output :
+  Derive InvProxy for nextcolor with pattern (pilotInversion 1 [noInversion; noInversion; noInversion]). *)
+Abort.
+
+(** As before, we add a prefix. *)
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for nextcolor with pattern (pilotInversion 1 [noInversion; noInversion; noInversion]) with prefix "csc".
+Set Elimination Schemes (* For comfort *).
+
+Theorem prevcolor3_Red_new : forall c1 c2 c3,
+    nextcolor c3 Red -> nextcolor c2 c3 -> nextcolor c1 c2 ->
+    Red = c1.
+Proof.
+  intros c1 c2 c3 nc3 nc2 nc1.
+  sinv nc3. sinv nc2. sinv nc1.
+  reflexivity.
+Qed.
+
 
 
 (* ================================================================== *)
 (** * Chapter 4: making your development independent from our plugin  *)
+
+(** It is possible to keep using the generated terms and the "sinv"
+tactic without having the plugin installed adn MetaRocq.
+
+Basically, you only have to copy and paste the useful Rocq code
+generated by each "Derive InvProxy for T", taking care of the class
+mechanism.  The "useful Rocq code" corresponds to the objects whose
+names are displayed by a "Derive InvProxy for T" when you use
+"Unset Elimination Schemes":
+
+the names of the partial algebraic types and then the name of the
+proxy, typically "T_proxy".  First, display the code of each generated
+partial algebraic type using "Print" and copy-paste the result in your
+source file without change.  Next, display the code of the proxy using
+"Print T_proxy.", resulting in something like
+
+  T_proxy =
+     fun ... =>
+     {|
+        proxy_type := bbb...;
+        invproxy := ccc...
+     |}
+         : forall (ddd...), InvProxy (T aaa...)
+
+In the last line, the parentheses around "ddd..." may be missing if
+there is only one variable.  Then by copy-paste and small adjustments,
+make it an instance of the class "InvProxy" along the following
+scheme:
+
+Instance T_proxy (ddd...) : InvProxy (T aaa...) :=
+  {|
+     proxy_type := bbb...;
+     invproxy := ccc...
+  |}.
+
+ *)
+
+
+(** In this demo we use a module only to avoid name clashes
+    with previous definitions in this file. *)
+Module ExampleIndependent.
+
+(** ** Example *)
+
+(** We consider again vect as defined in Chapter 2 above.
+the command "Derive InvProxy for vect." displayed:
+vect_O is defined
+vect_S is defined
+vect_proxy is defined
+
+Then type:
+*)
+Print vect_O.
+Print vect_S.
+
+(** You get:
+
+Inductive vect_O (A : Type) : Type :=  nil_O : vect_O A.
+Inductive vect_S (A : Type) (n : nat) : Type :=
+    cons_S : A -> vect A n -> vect_S A n.
+ *)
+
+(** You just copy them in your source file.
+    You can replace "Inductive" by "Variant". *)
+Variant vect_O (A : Type) : Type :=  nil_O : vect_O A.
+Variant vect_S (A : Type) (n : nat) : Type :=
+    cons_S : A -> vect A n -> vect_S A n.
+
+(** Then you need the proxy. *)
+
+Print vect_proxy.
+
+(** You get:
+
+vect_proxy =
+fun (_A : Type) (_nat2 : nat) =>
+{|
+  invproxy_type := match _nat2 with
+                   | 0 => vect_O _A
+                   | S x => vect_S _A x
+                   end;
+  invproxy :=
+    fun _vect_r : vect _A _nat2 =>
+    match
+      _vect_r in (vect _ _nat3)
+      return match _nat3 with
+             | 0 => vect_O _A
+             | S x => vect_S _A x
+             end
+    with
+    | nil _ => nil_O _A
+    | cons _ n x x0 => cons_S _A n x x0
+    end
+|}
+     : forall (_A : Type) (_nat2 : nat), InvProxy (vect _A _nat2)
+
+
+If you want to reuse what you wrote in your file without modification,
+in particular if you use "sinv",
+you need to add the above piece of code to the Type Class invproxy.
+To this effect, you slighly change if as follows:
+ *)
+
+Instance vect_proxy (_A : Type) (_nat2 : nat) : InvProxy (vect _A _nat2) :=
+{|
+  invproxy_type := match _nat2 with
+                   | 0 => vect_O _A
+                   | S x => vect_S _A x
+                   end;
+  invproxy :=
+    fun _vect_r : vect _A _nat2 =>
+    match
+      _vect_r in (vect _ _nat3)
+      return match _nat3 with
+             | 0 => vect_O _A
+             | S x => vect_S _A x
+             end
+    with
+    | nil _ => nil_O _A
+    | cons _ n x x0 => cons_S _A n x x0
+    end
+|}.
+
+(** It works as expected. *)
+Definition hd {A n} (u : vect A (S n)) : A :=
+  let 'cons_S _ _ x u' := invproxy u in x.
+
+(** Detailed algorithm:
+
+- on the first line,
+  + add `Instance` at the beginning;
+  + after `T_proxy`, insert the text of the last line after the `forall`,
+  that is, `(ddd...) : InvProxy (T aaa...)`;
+  the comma just before `InvProxy` is replaced by a colon;
+  + end the line by "`:=`" instead of "`=`";
+- remove the second line;
+- add a period after `|}` in the penultimate line;
+- remove the last line.
+
+ *)
+
+(** If you prefer a nicer presentation, you can observe that the
+    return clause of the field "invproxy" is based on "invproxy_type".
+    Then as suggested in Chapter 2, you can define separately
+    vect_proxy_type and vect_proxy. *)
+
+Reset vect_proxy.
+
+Definition vect_proxy_type A n : Type :=
+  match n with
+  | O   => vect_O A
+  | S n => vect_S A n
+  end.
+
+Definition vect_proxy {A n} (u : vect A n) : vect_proxy_type A n :=
+  match u with
+  | nil _         => nil_O A
+  | cons _ n x u' => cons_S A n x u'
+  end.
+
+Instance inst_vect_proxy (A : Type) (n : nat) : InvProxy (vect A n) :=
+{|
+  invproxy_type := vect_proxy_type A n;
+  invproxy := fun u => vect_proxy u
+|}.
+
+(** It works as expected. *)
+Definition hd {A n} (u : vect A (S n)) : A :=
+  let 'cons_S _ _ x u' := invproxy u in x.
+
+End ExampleIndependent.
+
+(** Then, in your source file, remove "Derive InvProxy for t",
+replace "Require Import small_inversion" by "Require Import typeclass",
+and add the file "./SmallInversion/typeclass.v" in your project.
+ *)
+
+(** For dependent PBSI, follow exactly the same instructions,
+    looking at what is displayed by "Derive Dependent Proxy for T." *)
 
 (* ================================================================== *)
 (** * Chapter 5: on the relevance of parameters *)
@@ -866,3 +1182,98 @@ Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
 
 End MyProxy.
 
+
+(* ================================================================== *)
+(** * Chapter 7: advanced tuning of PBSI *)
+
+(** Or: customizing proxies using "with pattern" *)
+
+(** An alternative definition for the less or equal relation on natural numbers.
+   As for nextcolor above, we have two interesting indices;
+   but their type is nat, so that more patterns on could be considered. *)
+
+Inductive le2 : nat -> nat -> Prop :=
+| L0 : forall m, le2 0 m
+| LS : forall n m, le2 n m -> le2 (S n) (S m).
+
+Definition FAKE := Prop.
+
+(** By default, the Derive InvProxy command build proxies for the
+    situations where the two indices are constructed.
+    However this is not relevant in the Lemma le2_n_1_small below,
+    where, as in nextcolor3, only the second index is constructed.
+    Additionally, the shape of the second index is very specific.
+    *)
+
+Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
+Proof.
+  intro l.
+(*  Fail sinv l.
+Abort. *)
+
+(* Let us restart just before the definition of FAKE.
+Reset FAKE. *)
+
+(** We actually need an accurate proxy, that can be obtained using
+    the inductive type inversion_pattern that specifies a relevant pattern
+    of indices. *)
+Print pilotInversion.
+
+(* It is used after the keywords "with pattern x" in the command
+   "Derive InvProxy", where x is a closed term of type inversion_pattern.
+   The term (pilotInversion n l) indicates that we ask for an inversion on index
+   number n, where l is a list that recursively specifies the kind of pattern matching
+   to be performed deeper for this index. Note that the length of list must be exactly
+   the nummber of partial inductive types, and that the index position must take
+   parameters into account.
+   In our example, the desired proxy is generated by the following command.
+ *)
+Unset Elimination Schemes.
+Derive InvProxy for le2
+  with pattern(pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
+Set Elimination Schemes.
+  sinv l as [ | n l'].
+  - left; reflexivity.
+  - right; sinv l'; reflexivity.
+Qed.
+
+(* As finding the correct pattern can be tricky, we also provide the command
+   "Create_sinv_call y" that, for a given inductively typed term y, prints
+   an invocation to "Derive InvProxy" with a suitable pattern for this y.
+   It can only be used in interactive proof mode.
+   Let us restart just before the definition of FAKE. *)
+
+Reset FAKE.
+
+Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
+Proof.
+  intro l.
+  Create_sinv_call l.
+  (* We get :
+Derive InvProxy for le2 with pattern (pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
+   *)
+
+Unset Elimination Schemes.
+Derive InvProxy for le2 with pattern (pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
+Set Elimination Schemes.
+  sinv l as [ | n l'].
+  - left; reflexivity.
+  - right; sinv l'; reflexivity.
+Qed.
+
+(** It is better practice to define the proxy before its use in le2_n_1_small.
+    The definitive script could be as follows. *)
+
+Reset FAKE.
+
+Unset Elimination Schemes.
+Derive InvProxy for le2 with pattern (pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
+Set Elimination Schemes.
+
+Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
+Proof.
+  intro l.
+  sinv l as [ | n l'].
+  - left; reflexivity.
+  - right; sinv l'; reflexivity.
+Qed.
