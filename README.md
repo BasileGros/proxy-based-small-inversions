@@ -4,17 +4,11 @@ In particular, the latter are not cluttered by additional equality constraints.
 
 They are especially useful for defining programs with dependent types and developing formal proofs about them.
 
+We assume a (co)inductively defined type $T$, that is a type defined using the keywords
+`Inductive`, `CoInductive` or just `Variant`.
+In what follows, we use the term “algebraic type” to encompass these possibilities.
 
-Proxy-based small inversions derive specialised versions of an inductive type $T$ according to the values (more precisely, the patterns) of the inductive indices of $T$, so that filtering on a term of type $T$ takes into account its particular form, i.e., the constructors used in its indices.
-
-They work in two steps:
-
-- First, defining suitable partial inductive types, which mimic the original inductive type $T$ depending on constructors used for one or more of its indices. A mapping from $T$ to the new partial inductive types is also defined. The partial inductive types together with this mapping act as a proxy for $T$.
-This step only needs to be performed once.
-
-- Second, inverting a object. It consists in decomposing a relevant proxy for it, using the `destruct` tactic (in interactive mode) or a pattern matching (when defining a dependently typed functional program).
-
-Both of those steps are supported by automated tools, the first by various commands that customise the specialisation of the original inductive type into partial inductive types, the second in the form of tactics to be called in interactive mode.
+Proxy-based small inversions (PBSI) are based on specialised versions of $T$ according to the values (more precisely, the patterns) of the algebraic indices of $T$.
 
 # Installation and compilation
 This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
@@ -37,10 +31,9 @@ From SmallInversion Require Import small_inversion.
 ```
 
 Proxy-based small inversions are used in two steps.
-First, for each inductive type $T$ on which inversions will be performed,
-call the preliminary command:  
+First, call the preliminary command:  
 `Derive InvProxy for T.`  
-This command derives custom-made definitions (partial inductive types and a function called $T$`_proxy`).
+This command derives custom-made definitions (partial algebraic types and a function called $T$`_proxy`).
 It is good practice to perform this command before stating a lemma whose proof uses PBSI.
 
 Then, in proof mode, you can call the tactic `sinv x` where x is the assumption
