@@ -40,7 +40,7 @@ A tutorial on automated proxy-based small inversions (PBSI)
 
 <div class="paragraph"> </div>
 
- We assume a (co)inductively defined type T, that is a type defined
+ We assume a (co)inductively defined type T, that is, a type defined
 using the keywords `Inductive`, `CoInductive` or just `Variant`.
 In what follows, we use the term “algebraic type” to encompass these
 possibilities.
@@ -80,11 +80,6 @@ PBSI work in two steps:
 <div class="doc">
 <a id="lab2"></a><h1 class="section">Cheat sheet</h1>
 
-<div class="paragraph"> </div>
-
-
-<div class="paragraph"> </div>
-
 <ul class="doclist">
 <li> Commands:
     Derive <span class="inlinecode"><span class="id" title="var">Dependent</span></span> InvProxy for YourType.
@@ -110,7 +105,17 @@ PBSI work in two steps:
 
 
 </li>
-<li> Programming constructs
+<li> Programming constructs (where PAT means partial algebraic type)
+    match YourType_proxy expr with
+    let ( , ... ) := YourType_proxy expr in
+    let 'ConstructorPAT... := YourType_proxy expr in
+    let 'ConstructorPAT... in PAT... x return ... x ... := YourType_proxy expr in
+
+<div class="paragraph"> </div>
+
+
+</li>
+<li> Programming constructs (OBSOLETE, TODO to be removed)
     match invproxy expr with
     let (... ) := (invproxy expr : ExpectedPartialAlgebraicType) in
     let (... ) := (YourType _ ).(invproxy) expr in
@@ -188,7 +193,7 @@ Chapter 7: advanced tuning of PBSI
 
 <div class="doc">
 Inversion is needed when we have assumptions (even X), where X is
-    not a variable but, for instance O, (S O), (S (S ...)) 
+    not a variable but constructed, for instance O, (S O), (S (S ...)) 
 <div class="paragraph"> </div>
 
  The following command is required to make PBSI available for even.
@@ -200,10 +205,10 @@ Inversion is needed when we have assumptions (even X), where X is
 <div class="paragraph"> </div>
 
  "Unset/Set Elimination Schemes" is not mandatory, it justs makes the
-    output cleaner -- the keyword for the PAT should actually
+    output cleaner -- the keyword for the PATs should actually
     be "Variant" instead of "Inductive", because they are not recursive,
     even though the original algebraic relation (even, here) is itself recursive.
-    This issue comes from MetaRocq &lt;= 1.4.1+9.1 and it should be fixed in the
+    This issue comes from MetaRocq &lt;= 1.5.1+9.1 and it should be fixed in the
     next release.
 
 </div>
@@ -217,11 +222,15 @@ Inversion is needed when we have assumptions (even X), where X is
 <div class="doc">
 This defines:
 <ul class="doclist">
-<li> a number of PAT for even.
+<li> a number of PATs for even.
       Here: even_O, even_S_O and even_S_S.
 
 </li>
-<li> a proxy function that gather them, here even_proxy.
+<li> a proxy function that gather them, here even_proxy
+
+</li>
+<li> an instance of the class InvProxy, here even_instance,
+      to be used internally by our generic tactic "sinv".
 
 </li>
 </ul>
@@ -323,22 +332,37 @@ Result (up to a renaming, possibly; the keyword Variant is
 <div class="paragraph"> </div>
 
  We also have (see below) :  even (S (S n) -&gt; even_S_S n.
-      A proof term for this implication is provided by invproxy. 
+      A proof term for this implication is provided by even_proxy. 
 </div>
 <div class="code">
-&nbsp;&nbsp;<span class="id" title="keyword">Check</span> (<span class="id" title="var">invproxy</span> <span class="id" title="var">e</span> : <span class="id" title="var">even_S_S</span> <span class="id" title="var">n</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Check</span> (<span class="id" title="var">even_proxy</span> (<span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">even</span> (<span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) → <span class="id" title="var">even_S_S</span> <span class="id" title="var">n</span>).<br/>
 </div>
 
 <div class="doc">
-The command "Derive InvProxy for even." actually also generated
-      a proxy for even, named "even_proxy", which is itself registered
-      as an instance of a Rocq class, so that sinv uses the proxy
-      for the relevant relation, so that "sinv e" is nothing else than
-      "destruct (invproxy e)".
-      A case analysis on (invproxy e) will then keep the only
-      relevant case, corresponding to the constructor even2. 
+As a consequence: 
 </div>
 <div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Check</span> (<span class="id" title="var">even_proxy</span> <span class="id" title="var">_</span> <span class="id" title="var">e</span> : <span class="id" title="var">even_S_S</span> <span class="id" title="var">n</span>).<br/>
+</div>
+
+<div class="doc">
+(even_proxy _ e) can be decomposed as defined in even_S_S. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">even_proxy</span> <span class="id" title="var">_</span> <span class="id" title="var">e</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">e'</span>].<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+We can also use invproxy e, because even_proxy and its type are gathered
+      in a Rocq class, so that invproxy e is convertible with (even_proxy _ e).
+      Indeed, "sinv e" is nothing else than "destruct (invproxy e)".
+   
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Check</span> <span class="id" title="var">eq_refl</span> : <span class="id" title="var">invproxy</span> <span class="id" title="var">e</span> = <span class="id" title="var">even_proxy</span> <span class="id" title="var">_</span> <span class="id" title="var">e</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Undo</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">invproxy</span> <span class="id" title="var">e</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">e'</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">exact</span> <span class="id" title="var">e'</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
@@ -352,7 +376,7 @@ A more technical remark:
     even2_S_S, in contrast with even2; we then did not write
     "as <span class="inlinecode"><span class="id" title="var">n'</span></span> <span class="inlinecode"><span class="id" title="var">e'</span></span>" but just "as <span class="inlinecode"><span class="id" title="var">e'</span></span>"; more importantly, this is
     why the link with other occurrences of n in the goal is kept.
-    The curious reader will find more details on this aspect in Chapter 5.
+    The interested reader will find more details on this aspect in Chapter 5.
 
 <div class="paragraph"> </div>
 
@@ -375,6 +399,7 @@ Here, we have no case of even x where x has the shape (S O)
 We also have :  even (S O) -&gt; even_S_O. 
 </div>
 <div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Check</span> (<span class="id" title="var">even_proxy</span> (<span class="id" title="var">S</span> <span class="id" title="var">O</span>) : <span class="id" title="var">even</span> (<span class="id" title="var">S</span> <span class="id" title="var">O</span>) → <span class="id" title="var">even_S_O</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Check</span> (<span class="id" title="var">invproxy</span> <span class="id" title="var">e</span> : <span class="id" title="var">even_S_O</span>).<br/>
 </div>
 
@@ -389,32 +414,30 @@ Consistently, destruct (invproxy e) generates no case to consider
 </div>
 
 <div class="doc">
-You can print even_proxy.
-    It has two fields: invproxy_type and invproxy, but unfortunately
-    readability is impaired because the body of invproxy_type is inlined
-    in invproxy. 
+You can also print the type of even_proxy. 
 </div>
 <div class="code">
-
-<br/>
-<span class="id" title="keyword">Print</span> <span class="id" title="var">even_proxy</span>.<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">even_proxy</span>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-You could then redefine it in a more readable manner as follows,
-    starting with its type. 
+The key is the definition of even_proxy_type, that is based on the
+    three PATS of even presented above. 
 </div>
 <div class="code">
+<span class="id" title="keyword">Print</span> <span class="id" title="var">even_proxy_type</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">even_proxy_type</span> <span class="id" title="var">n</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| 0 ⇒ <span class="id" title="var">even_O</span><br/>
-&nbsp;&nbsp;| 1 ⇒ <span class="id" title="var">even_S_O</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) ⇒ <span class="id" title="var">even_S_S</span> <span class="id" title="var">n</span><br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+</div>
+
+<div class="doc">
+You could even print even_proxy and make it somewhat
+    more beautiful. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Print</span> <span class="id" title="var">even_proxy</span>.<br/>
 
 <br/>
 </div>
@@ -450,9 +473,21 @@ Then observe on the following scenario that you get a
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
+</div>
+
+<div class="doc">
+You get a small proof term. 
+</div>
+<div class="code">
 <span class="id" title="keyword">Print</span> <span class="id" title="var">even_cancel_S_S_handcrafted</span>.<br/>
 
 <br/>
+</div>
+
+<div class="doc">
+See the constrast with what you get using the tactic inversion. 
+</div>
+<div class="code">
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">even_cancel_S_S_inversion</span> <span class="id" title="var">n</span> : <span class="id" title="var">even</span> (<span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) → <span class="id" title="var">even</span> <span class="id" title="var">n</span>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intro</span> <span class="id" title="var">e</span>. <span class="id" title="tactic">inversion</span> <span class="id" title="var">e</span>. <span class="id" title="tactic">assumption</span>.<br/>
@@ -468,7 +503,7 @@ Then observe on the following scenario that you get a
 In the above example, even is a unary predicate.
     In the presence of n-ary relations, some tuning is generally
     needed.  This is considered below in Chapter 3 for simple situations,
-    then Chapter 7 for more advanced cases.
+    then in Chapter 7 for more demanding cases.
 
 </div>
 <div class="code">
@@ -494,6 +529,9 @@ In the above example, even is a unary predicate.
 <div class="code">
 
 <br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">Chapters_2_3</span>.<br/>
+
+<br/>
 <span class="id" title="keyword">Inductive</span> <span class="id" title="var">vect</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) : <span class="id" title="var">nat</span> → <span class="id" title="keyword">Type</span> :=<br/>
 | <span class="id" title="var">nil</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">O</span><br/>
 | <span class="id" title="var">cons</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">n</span>, <span class="id" title="var">A</span> → <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>).<br/>
@@ -507,6 +545,24 @@ In the above example, even is a unary predicate.
 </div>
 
 <div class="doc">
+vect_proxy will be used below in programs 
+</div>
+<div class="code">
+<span class="id" title="keyword">About</span> <span class="id" title="var">vect_proxy</span>.<br/>
+</div>
+
+<div class="doc">
+We see that its main argument is a vector, preceded by its
+    parameter and its index.  It is more convenient for these last two
+    to be declared as implicit. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">vect_proxy</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>} <span class="id" title="var">_</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
 The head and tail function make sense only for vectors with
      a strictly positive length. 
 <div class="paragraph"> </div>
@@ -515,7 +571,7 @@ The head and tail function make sense only for vectors with
     in the "in" clause, in constrast with parameters, represented
     by a wilcard "_" . Note that n is a component of cons,
     whereas it is a parameter of vect_S, and then no longer
-   a component of cons_S. 
+    a component of cons_S. 
 </div>
 <div class="code">
 
@@ -533,6 +589,21 @@ Therefore, we have two wildcards for cons_S in the following
 
 <br/>
 <span class="id" title="keyword">Definition</span> <span class="id" title="var">hd</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">x</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+For the record, the class mechanism mentioned above can
+    also be used, using the generic name "invproxy". 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_gen</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">x</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
@@ -541,52 +612,35 @@ Therefore, we have two wildcards for cons_S in the following
 </div>
 
 <div class="doc">
-Equivalently, you can use a deconstructing let.
-    However a naive attempt fails, because there is not enough
-    information to perform type inference 
-</div>
-<div class="code">
-<span class="id" title="var">Fail</span> <span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_optimistic</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := (<span class="id" title="var">invproxy</span> <span class="id" title="var">u</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+<a id="lab6"></a><h2 class="section">Deconstructing let</h2>
 
-<br/>
-</div>
+<div class="paragraph"> </div>
 
-<div class="doc">
-You should then use one of the 3 more verbose following methods. 
+ This section can be skipped at first reading 
+<div class="paragraph"> </div>
+
+ Equivalently, you can use a deconstructing let.
+     You can use one of the 2 following methods. 
 <div class="paragraph"> </div>
 
  Method 1: agnostic in the name of the constructor,
     completely generic, by specifying the proxy instance to be used,
-    here vect_proxy, the name printed by "Derive InvProxy for vect. 
+    here vect_proxy, the name printed by "Derive InvProxy for vect". 
 </div>
 <div class="code">
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_inst</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := (<span class="id" title="var">vect_proxy</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ).(<span class="id" title="var">invproxy</span>) <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_let</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-Method 2: agnostic in the name of the constructor,
-    by specifying the expected PAT,
-    here vect_S A n, where vect_S is the relevant name
-    printed by "Derive InvProxy for vect. 
+Method 2: deconstructing let that uses the name of the expected
+      constructor, here cons_S, as in the above "match vect_proxy u". 
 </div>
 <div class="code">
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_PAT</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := (<span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> : <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-Method 3: deconstructing let that uses the name of the expected
-      constructor, here cons_S, as in the above "match invproxy u". 
-</div>
-<div class="code">
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_cons</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_let_cons</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
 
 <br/>
 </div>
@@ -600,13 +654,13 @@ An additional possibility is to set "asymmetric patterns",
 <br/>
 <span class="id" title="keyword">Set</span> <span class="id" title="var">Asymmetric</span> <span class="id" title="var">Patterns</span>.<br/>
 <span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_asym</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> : <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">cons_S</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">x</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_cons_asym</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
 
 <br/>
 </div>
@@ -621,11 +675,39 @@ Back to the default option of Rocq.
 </div>
 
 <div class="doc">
-For the tail, we pick one of the above methods. 
+<a id="lab7"></a><h2 class="section">Defining map2</h2>
+
+<div class="paragraph"> </div>
+
+ We now define our favorite example: map2.  It is similar to map
+    but, instead of a unary function, it applies a BINARY function
+    to the elements of TWO vectors indexed by the SAME length. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">map2</span> {<span class="id" title="var">A</span> <span class="id" title="var">B</span> <span class="id" title="var">C</span>} (<span class="id" title="var">f</span> : <span class="id" title="var">A</span> → <span class="id" title="var">B</span> → <span class="id" title="var">C</span>) {<span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) :<br/>
+&nbsp;&nbsp;<span class="id" title="var">vect</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span> → <span class="id" title="var">vect</span> <span class="id" title="var">C</span> <span class="id" title="var">n</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span>         ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">v</span> ⇒ <span class="id" title="var">nil</span> <span class="id" title="var">C</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">v</span> ⇒<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">y</span>, <span class="id" title="var">v'</span>) := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">v</span> <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="var">f</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span>) (<span class="id" title="var">map2</span> <span class="id" title="var">f</span> <span class="id" title="var">u'</span> <span class="id" title="var">v'</span>)<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab8"></a><h2 class="section">Formal proofs about dependently typed programs</h2>
+
+<div class="paragraph"> </div>
+
+ For the tail, we pick one of the above methods. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <span class="id" title="var">tl</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := (<span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> : <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">u'</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">u'</span>.<br/>
 
 <br/>
 </div>
@@ -650,7 +732,7 @@ We see that, in the conclusion, u is not changed to (cons A n x u').
 </div>
 
 <div class="doc">
-The technical resason is that the return clause of the corresponding
+The technical reason is that the return clause of the corresponding
     pattern-matching construct references n but not the original vector.
     What is needed is called dependent PBSI.
  
@@ -663,6 +745,12 @@ The technical resason is that the return clause of the corresponding
 <span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
 
 <br/>
+</div>
+
+<div class="doc">
+The tactic to be used is "sdinv" instead of "sinv". 
+</div>
+<div class="code">
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">make_hd_tl</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">u</span> = <span class="id" title="var">cons</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> (<span class="id" title="var">hd</span> <span class="id" title="var">u</span>) (<span class="id" title="var">tl</span> <span class="id" title="var">u</span>).<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">sdinv</span> <span class="id" title="var">u</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">x</span> <span class="id" title="var">u'</span>]. <span class="id" title="var">cbn</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
@@ -675,7 +763,7 @@ The technical resason is that the return clause of the corresponding
 Dependent PBSI is actually a slight modification of PBSI,
     that uses partial algebraic types containing an additional index
     that reflects the original vector.
-    We will reference relevant publications ASAP for additional explanations,
+    Additional explanations can be found in our LPAR-26 paper,
     but the idea can be caught by looking at the definitions generated
     by the above commands.
     It is instructive to see:
@@ -709,40 +797,39 @@ The code of the dependent proxy itself looks more complicated,
 <br/>
 <span class="id" title="keyword">Print</span> <span class="id" title="var">vect_proxy</span>.<br/>
 <span class="id" title="keyword">Print</span> <span class="id" title="var">vect_dproxy</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_dproxy_type</span>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-For the interested reader, here are more readable handcrafted definitions
-    for those proxies, reusing the partial algebraic types automatically defined
-    by our "Derive InvProxy" command. 
+The above defnitions can be beautified. 
 </div>
 <div class="code">
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> : <span class="id" title="keyword">Type</span> :=<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> : <span class="id" title="keyword">Type</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">O</span>   ⇒ <span class="id" title="var">vect_O</span> <span class="id" title="var">A</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">n</span> ⇒ <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_proxy</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_proxy</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">my_vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span>         ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">A</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_dproxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="keyword">Type</span> :=<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_dproxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="keyword">Type</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">O</span>   ⇒ <span class="id" title="var">vect_O_dep</span> <span class="id" title="var">A</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">n</span> ⇒ <span class="id" title="var">vect_S_dep</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_dproxy</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">vect_dproxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">u</span> :=<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">my_vect_dproxy</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">my_vect_dproxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">u</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span>         ⇒ <span class="id" title="var">nil_O_dep</span> <span class="id" title="var">A</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">cons_S_dep</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span><br/>
@@ -752,63 +839,27 @@ For the interested reader, here are more readable handcrafted definitions
 </div>
 
 <div class="doc">
-An advantage is that a deconstructing let raises no issue coming
-    from Rocq classes 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_my</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := <span class="id" title="var">my_vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-We now define our favorite example: map2, that is similar to map
-    but, instead of a unary function, it applies a BINARY function
-    to the elements of TWO vectors indexed by the SAME length. 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">map2</span> {<span class="id" title="var">A</span> <span class="id" title="var">B</span> <span class="id" title="var">C</span>} (<span class="id" title="var">f</span> : <span class="id" title="var">A</span> → <span class="id" title="var">B</span> → <span class="id" title="var">C</span>) {<span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) :<br/>
-&nbsp;&nbsp;<span class="id" title="var">vect</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span> → <span class="id" title="var">vect</span> <span class="id" title="var">C</span> <span class="id" title="var">n</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span>         ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">v</span> ⇒ <span class="id" title="var">nil</span> <span class="id" title="var">C</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">v</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">y</span>, <span class="id" title="var">v'</span>) := <span class="id" title="var">my_vect_proxy</span> <span class="id" title="var">v</span> <span class="id" title="tactic">in</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="var">f</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span>) (<span class="id" title="var">map2</span> <span class="id" title="var">f</span> <span class="id" title="var">u'</span> <span class="id" title="var">v'</span>)<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-<a id="lab6"></a><h1 class="section">Chapter 3: simple tuning of PBSI</h1>
+<a id="lab9"></a><h1 class="section">Chapter 3: simple tuning of PBSI</h1>
 
 <div class="paragraph"> </div>
 
-
-<div class="paragraph"> </div>
-
-   Vectors have only one index, for their length. Given a vector u to
-   be analyzed by pattern matching, its index is in general an expression
-   of type nat.  If this expression is a variable, CIC pattern matching
-   is designed for this situation, just use it without making things any
-   more complicated.  This is exactly the case for the first argument
-   in the map2 function above.
-   Indeed, trying to use PBSI in this situation does not make sense,
-   because the type of (my_vect_proxy u), that is,
-   vect_proxy_type A n, does not reduce further than
-   match n with  0 =&gt; vect_O A  |  S n =&gt; vect_S A n  end.
-   Then you don't know if you should a pattern for vect_O or for vect_S.
-   This is rather clear if you write directly your program.
-   If you are in interactive mode, either because you are designing your
-   program, or because your target is not a program, but a proof,
-   you may try our tactic sinv.  This will result in a typical error
-   message "Not an inductive definition", as in the following scenario,
-   followed by a small number of additional explanatory commands.
+ Vectors have only one index, for their length.  Given a vector u to
+    be analyzed by pattern matching, its index is in general an expression
+    of type nat.  If this expression is a variable, CIC pattern matching
+    is designed for this situation, just use it without making things any
+    more complicated.  This is exactly the case for the first argument
+    in the map2 function above.
+    Indeed, trying to use PBSI in this situation does not make sense,
+    because the type of (my_vect_proxy u), that is,
+    vect_proxy_type A n, does not reduce further than
+    match n with  0 =&gt; vect_O A  |  S n =&gt; vect_S A n  end.
+    Then you don't know if you should a pattern for vect_O or for vect_S.
+    This is rather clear if you write directly your program.
+    If you are in interactive mode, either because you are designing your
+    program, or because your target is not a program, but a proof,
+    you may try our tactic sinv.  This will result in a typical error
+    message "Not an inductive definition", as in the following scenario,
+    followed by a small number of additional explanatory commands.
  
 </div>
 <div class="code">
@@ -817,29 +868,55 @@ We now define our favorite example: map2, that is similar to map
 #[<span class="id" title="tactic">refine</span>]<br/>
 <span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">map2_stupid</span> {<span class="id" title="var">A</span> <span class="id" title="var">B</span> <span class="id" title="var">C</span>} (<span class="id" title="var">f</span> : <span class="id" title="var">A</span> → <span class="id" title="var">B</span> → <span class="id" title="var">C</span>) {<span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) :<br/>
 &nbsp;&nbsp;<span class="id" title="var">vect</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span> → <span class="id" title="var">vect</span> <span class="id" title="var">C</span> <span class="id" title="var">n</span> := <span class="id" title="var">_</span>.<br/>
-<span class="id" title="var">Fail</span> <span class="id" title="var">sinv</span> <span class="id" title="var">u</span>. <span class="id" title="var">Fail</span> <span class="id" title="tactic">destruct</span> (<span class="id" title="var">invproxy</span> <span class="id" title="var">u</span>). <span class="id" title="keyword">Check</span> <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> : (<span class="id" title="var">vect_proxy</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>).(<span class="id" title="var">invproxy_type</span>).<br/>
-<span class="id" title="keyword">Compute</span> (<span class="id" title="var">vect_proxy</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>).(<span class="id" title="var">invproxy_type</span>). <span class="id" title="keyword">Abort</span>.<br/>
+<span class="id" title="var">Fail</span> <span class="id" title="var">sinv</span> <span class="id" title="var">u</span>. <span class="id" title="var">Fail</span> <span class="id" title="tactic">destruct</span> (<span class="id" title="var">invproxy</span> <span class="id" title="var">u</span>). </div>
+
+<div class="doc">
+Similarly to what was shon on even, invproxy u is convertible with vect_proxy u. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Check</span> <span class="id" title="var">eq_refl</span> : <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> = <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span>.<br/>
+</div>
+
+<div class="doc">
+Here is its type 
+</div>
+<div class="code">
+<span class="id" title="keyword">Check</span> <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> : <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>.<br/>
+</div>
+
+<div class="doc">
+However, this type is not converitble to an inductive type. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Compute</span> <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>.<br/>
+</div>
+
+<div class="doc">
+Hence the error message 
+</div>
+<div class="code">
+<span class="id" title="keyword">Abort</span>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-   In other words, you don't have relevant information on n to be used
-   by PBSI.
+In other words, you don't have relevant information on n to be used
+    by PBSI.
 
 <div class="paragraph"> </div>
 
-   Now, if the index of u is "constructed", that is, if it O or (S n)
-   for some n -- or if it is convertible to one ot those two shapes --
-   the type of (invproxy u) will reduce to vect_O or to vect_S n,
-   respectively (with an implicit parameter, say A)
-   and in either case, it can be properly decomposed.
+    Now, if the index of u is "constructed", that is, if it O or (S n)
+    for some n -- or if it is convertible to one ot those two shapes --
+    the type of (invproxy u) will reduce to vect_O or to vect_S n,
+    respectively (with an implicit parameter, say A)
+    and in either case, it can be properly decomposed.
 
 <div class="paragraph"> </div>
 
-   In summary, the relevant pattern matching expression to be used is
-   match u with..., if the index of u if a variable, and
-   match invproxy u with ..., if the index of u is constructed.
+    In summary, the relevant pattern matching expression to be used is
+    match u with..., if the index of u if a variable, and
+    match vect_proxy u with ..., if the index of u is constructed.
 
 </div>
 <div class="code">
@@ -848,16 +925,13 @@ We now define our favorite example: map2, that is similar to map
 </div>
 
 <div class="doc">
-<a id="lab7"></a><h2 class="section">Selecting an index</h2>
+<a id="lab10"></a><h2 class="section">Selecting an index</h2>
 
 <div class="paragraph"> </div>
 
-
-<div class="paragraph"> </div>
-
-   For types or relations with 2 indices, the same binary question should be
-   asked for each index, so that we have 4 possibilities, that is
-   3 possibilities for a proxy, that could expect:
+ For types or relations with 2 indices, the same binary question should be
+    asked for each index, so that we have 4 possibilities, that is
+    3 possibilities for a proxy, that could expect:
 <ul class="doclist">
 <li> 2 constructed indices
 
@@ -866,9 +940,9 @@ We now define our favorite example: map2, that is similar to map
 
 </li>
 </ul>
-   In theory, all possibilities can make sense. In practice, we derive
-   the desired proxy only for the needed situation.
-   Let us illustrate this on the following binary relation nextcolor.
+    In theory, all possibilities can make sense. In practice, we derive
+    the desired proxy only for the needed situation.
+    Let us illustrate this on the following binary relation nextcolor.
 
 </div>
 <div class="code">
@@ -976,8 +1050,8 @@ Here is a lemma with an ordinary destruct followed by two PBSI.
 <div class="doc">
 The general command "Derive InvProxy for T" specialises the
 algebraic type over all *useful* indices -- technically: all indices
-that take the form of a constructor in the conclusion of the
-constructors of T.
+that take the form of a constructor in the conclusion of at least
+one of the constructors of T.
 
 </div>
 <div class="code">
@@ -986,7 +1060,7 @@ constructors of T.
 </div>
 
 <div class="doc">
-<a id="lab8"></a><h2 class="section">Using different proxies for the same relation</h2>
+<a id="lab11"></a><h2 class="section">Using different proxies for the same relation</h2>
 
 <div class="paragraph"> </div>
 
@@ -1097,10 +1171,13 @@ As before, we add a prefix.
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Chapters_2_3</span>.<br/>
+
+<br/>
 </div>
 
 <div class="doc">
-<a id="lab9"></a><h1 class="section">Chapter 4: making your development independent from our plugin</h1>
+<a id="lab12"></a><h1 class="section">Chapter 4: making your development independent from our plugin</h1>
 
 <div class="paragraph"> </div>
 
@@ -1111,42 +1188,104 @@ As before, we add a prefix.
 
 Basically, you only have to copy and paste the useful Rocq code
 generated by each "Derive InvProxy for T", taking care of the class
-mechanism.  The "useful Rocq code" corresponds to the objects whose
+mechanism if you need it (mainly for tactics sinv and sdinv).
+The "useful Rocq code" corresponds to the objects whose
 names are displayed by a "Derive InvProxy for T" when you use
-"Unset Elimination Schemes":
+"Unset Elimination Schemes", which are:
+<ul class="doclist">
+<li> the names of the partial algebraic types
+
+</li>
+<li> the name of the proxy and of its type, typically "T_proxy" and  "T_proxy_type".
+
+</li>
+<li> the name of the corresponding instance registered in the
+  invproxy class.
 
 <div class="paragraph"> </div>
 
-the names of the partial algebraic types and then the name of the
-proxy, typically "T_proxy".  First, display the code of each generated
-partial algebraic type using "Print" and copy-paste the result in your
-source file without change.  Next, display the code of the proxy using
-"Print T_proxy.", resulting in something like
+ 
+</li>
+</ul>
 
 <div class="paragraph"> </div>
 
-  T_proxy =
-     fun ... =&gt;
-     {|
-        proxy_type := bbb...;
-        invproxy := ccc...
-     |}
-         : forall (ddd...), InvProxy (T aaa...)
+<a id="lab13"></a><h2 class="section">Example</h2>
 
 <div class="paragraph"> </div>
 
-In the last line, the parentheses around "ddd..." may be missing if
-there is only one variable.  Then by copy-paste and small adjustments,
-make it an instance of the class "InvProxy" along the following
-scheme:
+ We consider again vect as defined in Chapter 2 above.
+the command "Derive InvProxy for vect." displayed:
+vect_O is defined
+vect_S is defined
+vect_proxy_type is defined
+vect_proxy is defined
+vect_instance is defined
 
 <div class="paragraph"> </div>
 
-Instance T_proxy (ddd...) : InvProxy (T aaa...) :=
-  {|
-     proxy_type := bbb...;
-     invproxy := ccc...
-  |}.
+Then get their contents.
+The last one is only useful if you want to use the
+class mechanism for tactics in scripts.
+ 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">vect</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) : <span class="id" title="var">nat</span> → <span class="id" title="keyword">Type</span> :=<br/>
+| <span class="id" title="var">nil</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">O</span><br/>
+| <span class="id" title="var">cons</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">n</span>, <span class="id" title="var">A</span> → <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Unset</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">InvProxy</span> <span class="id" title="keyword">for</span> <span class="id" title="var">vect</span>.<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_O</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_S</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_proxy_type</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_proxy</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_instance</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+You get:
+
+<div class="paragraph"> </div>
+
+Inductive vect_O (A : Type) : Type :=  nil_O : vect_O A.
+Inductive vect_S (A : Type) (n : nat) : Type :=
+    cons_S : A -&gt; vect A n -&gt; vect_S A n.
+
+<div class="paragraph"> </div>
+
+vect_proxy_type =
+fun (A : Type) (nat0 : nat) =&gt;
+match nat0 with
+| 0 =&gt; vect_O A
+| S x =&gt; vect_S A x
+end
+     : Type -&gt; nat -&gt; Type
+
+<div class="paragraph"> </div>
+
+vect_proxy =
+fun (A : Type) (nat2 : nat) (vect_r : vect A nat2) =&gt;
+match vect_r in (vect _ nat3) return (vect_proxy_type A nat3) with
+| nil _ =&gt; nil_O A
+| cons _ n x x0 =&gt; cons_S A n x x0
+end
+     : forall (A : Type) (nat2 : nat), vect A nat2 -&gt; vect_proxy_type A nat2
+
+<div class="paragraph"> </div>
+
+vect_instance =
+fun (A : Type) (nat2 : nat) =&gt;
+{| invproxy_type := vect_proxy_type A nat2; invproxy := vect_proxy A nat2 |}
+     : forall (A : Type) (nat2 : nat), InvProxy (vect A nat2)
 
 <div class="paragraph"> </div>
 
@@ -1163,40 +1302,7 @@ Instance T_proxy (ddd...) : InvProxy (T aaa...) :=
 </div>
 
 <div class="doc">
-<a id="lab10"></a><h2 class="section">Example</h2>
-
-<div class="paragraph"> </div>
-
- We consider again vect as defined in Chapter 2 above.
-the command "Derive InvProxy for vect." displayed:
-vect_O is defined
-vect_S is defined
-vect_proxy is defined
-
-<div class="paragraph"> </div>
-
-Then type:
-
-</div>
-<div class="code">
-<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_O</span>.<br/>
-<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_S</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-You get:
-
-<div class="paragraph"> </div>
-
-Inductive vect_O (A : Type) : Type :=  nil_O : vect_O A.
-Inductive vect_S (A : Type) (n : nat) : Type :=
-    cons_S : A -&gt; vect A n -&gt; vect_S A n.
- 
-<div class="paragraph"> </div>
-
- You just copy them in your source file.
+You just copy the partial algebraic types in your source file.
     You can replace "Inductive" by "Variant". 
 </div>
 <div class="code">
@@ -1208,147 +1314,75 @@ Inductive vect_S (A : Type) (n : nat) : Type :=
 </div>
 
 <div class="doc">
-Then you need the proxy. 
+The proxy type and the proxy need obvious adjustments. 
 </div>
 <div class="code">
 
 <br/>
-<span class="id" title="keyword">Print</span> <span class="id" title="var">vect_proxy</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy_type</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">nat0</span> : <span class="id" title="var">nat</span>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">nat0</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| 0 ⇒ <span class="id" title="var">vect_O</span> <span class="id" title="var">A</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">x</span> ⇒ <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">x</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">nat2</span> : <span class="id" title="var">nat</span>) (<span class="id" title="var">vect_r</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">nat2</span>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">vect_r</span> <span class="id" title="tactic">in</span> (<span class="id" title="var">vect</span> <span class="id" title="var">_</span> <span class="id" title="var">nat3</span>) <span class="id" title="keyword">return</span> (<span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">nat3</span>) <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span> ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">A</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-You get:
-
-<div class="paragraph"> </div>
-
-vect_proxy =
-fun (<i>A : Type) (<i>nat2 : nat) =&gt;
-{|
-  invproxy_type := match <i>nat2 with
-                   | 0 =&gt; vect_O <i>A
-                   | S x =&gt; vect_S <i>A x
-                   end;
-  invproxy :=
-    fun <i>vect_r : vect <i>A <i>nat2 =&gt;
-    match
-      <i>vect_r in (vect _ _nat3)
-      return match <i>nat3 with
-             | 0 =&gt; vect_O <i>A
-             | S x =&gt; vect_S <i>A x
-             end
-    with
-    | nil _ =&gt; nil_O <i>A
-    | cons _ n x x0 =&gt; cons_S <i>A n x x0
-    end
-|}
-     : forall (<i>A : Type) (<i>nat2 : nat), InvProxy (vect <i>A <i>nat2)
-
-<div class="paragraph"> </div>
-
-If you want to reuse what you wrote in your file without modification,
-in particular if you use "sinv",
-you need to add the above piece of code to the Type Class invproxy.
-To this effect, you slighly change if as follows:
- 
+You may want to beautity those definitions, for instance the last one 
 </div>
 <div class="code">
-
-<br/>
-<span class="id" title="keyword">Instance</span> <span class="id" title="var">vect_proxy</span> (<span class="id" title="var">_A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">_nat2</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">InvProxy</span> (<span class="id" title="var">vect</span> <span class="id" title="var">_A</span> <span class="id" title="var">_nat2</span>) :=<br/>
-{|<br/>
-&nbsp;&nbsp;<span class="id" title="var">invproxy_type</span> := <span class="id" title="keyword">match</span> <span class="id" title="var">_nat2</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| 0 ⇒ <span class="id" title="var">vect_O</span> <span class="id" title="var">_A</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">x</span> ⇒ <span class="id" title="var">vect_S</span> <span class="id" title="var">_A</span> <span class="id" title="var">x</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>;<br/>
-&nbsp;&nbsp;<span class="id" title="var">invproxy</span> :=<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">fun</span> <span class="id" title="var">_vect_r</span> : <span class="id" title="var">vect</span> <span class="id" title="var">_A</span> <span class="id" title="var">_nat2</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">_vect_r</span> <span class="id" title="tactic">in</span> (<span class="id" title="var">vect</span> <span class="id" title="var">_</span> <span class="id" title="var">_nat3</span>)<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">return</span> <span class="id" title="keyword">match</span> <span class="id" title="var">_nat3</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| 0 ⇒ <span class="id" title="var">vect_O</span> <span class="id" title="var">_A</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">x</span> ⇒ <span class="id" title="var">vect_S</span> <span class="id" title="var">_A</span> <span class="id" title="var">x</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span> ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">_A</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">_A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
-|}.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-It works as expected. 
-</div>
-<div class="code">
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-Detailed algorithm:
-
-<div class="paragraph"> </div>
-
-<ul class="doclist">
-<li> on the first line,
-  + add `Instance` at the beginning;
-  + after `T_proxy`, insert the text of the last line after the `forall`,
-  that is, `(ddd...) : InvProxy (T aaa...)`;
-  the comma just before `InvProxy` is replaced by a colon;
-  + end the line by "`:=`" instead of "`=`";
-
-</li>
-<li> remove the second line;
-
-</li>
-<li> add a period after `|}` in the penultimate line;
-
-</li>
-<li> remove the last line.
-
-<div class="paragraph"> </div>
-
- 
-</li>
-</ul>
-
-<div class="paragraph"> </div>
-
- If you prefer a nicer presentation, you can observe that the
-    return clause of the field "invproxy" is based on "invproxy_type".
-    Then as suggested in Chapter 2, you can define separately
-    vect_proxy_type and vect_proxy. 
-</div>
-<div class="code">
-
-<br/>
 <span class="id" title="keyword">Reset</span> <span class="id" title="var">vect_proxy</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> : <span class="id" title="keyword">Type</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">O</span>   ⇒ <span class="id" title="var">vect_O</span> <span class="id" title="var">A</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">S</span> <span class="id" title="var">n</span> ⇒ <span class="id" title="var">vect_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span><br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">v</span> <span class="id" title="tactic">in</span> (<span class="id" title="var">vect</span> <span class="id" title="var">_</span> <span class="id" title="var">nat3</span>) <span class="id" title="keyword">return</span> (<span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">nat3</span>) <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span> ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">A</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">v'</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">v'</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">u</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span>         ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">A</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span><br/>
+</div>
+
+<div class="doc">
+You can also make the type of the result more readable 
+</div>
+<div class="code">
+<span class="id" title="keyword">Reset</span> <span class="id" title="var">vect_proxy</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">vect_proxy</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">v</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">nil</span> <span class="id" title="var">_</span> ⇒ <span class="id" title="var">nil_O</span> <span class="id" title="var">A</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">cons</span> <span class="id" title="var">_</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">v'</span> ⇒ <span class="id" title="var">cons_S</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">x</span> <span class="id" title="var">v'</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Instance</span> <span class="id" title="var">inst_vect_proxy</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">InvProxy</span> (<span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) :=<br/>
-{|<br/>
-&nbsp;&nbsp;<span class="id" title="var">invproxy_type</span> := <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>;<br/>
-&nbsp;&nbsp;<span class="id" title="var">invproxy</span> := <span class="id" title="keyword">fun</span> <span class="id" title="var">u</span> ⇒ <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span><br/>
-|}.<br/>
+</div>
+
+<div class="doc">
+Finally, if you want to reuse what you wrote in your file without
+    modification, in particular if you use "sinv" or "invproxy", 
+    vect_instance needs to be declared as in instance
+    of the class InvProxy.
+    The type of the result is given at the end of the last line
+    displayed above when printing vect_instance: InvProxy (vect A nat2) 
+</div>
+<div class="code">
+<span class="id" title="keyword">Instance</span> <span class="id" title="var">vect_instance</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">nat2</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">InvProxy</span> (<span class="id" title="var">vect</span> <span class="id" title="var">A</span> <span class="id" title="var">nat2</span>) :=<br/>
+&nbsp;&nbsp;{| <span class="id" title="var">invproxy_type</span> := <span class="id" title="var">vect_proxy_type</span> <span class="id" title="var">A</span> <span class="id" title="var">nat2</span>; <span class="id" title="var">invproxy</span> := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">A</span> <span class="id" title="var">nat2</span> |}.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+It is generally convenient have implicit arguments in vect_proxy. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">vect_proxy</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>} <span class="id" title="var">_</span>.<br/>
 
 <br/>
 </div>
@@ -1357,7 +1391,15 @@ Detailed algorithm:
 It works as expected. 
 </div>
 <div class="code">
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_let</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">x</span>, <span class="id" title="var">u'</span>) := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_let_cons</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">vect_proxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">hd_class</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">u</span> : <span class="id" title="var">vect</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">cons_S</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">u'</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">u</span> <span class="id" title="tactic">in</span> <span class="id" title="var">x</span>.<br/>
 
 <br/>
@@ -1382,18 +1424,15 @@ and add the file "./SmallInversion/typeclass.v" in your project.
 </div>
 
 <div class="doc">
-<a id="lab11"></a><h1 class="section">Chapter 5: on the relevance of parameters</h1>
+<a id="lab14"></a><h1 class="section">Chapter 5: on the relevance of parameters</h1>
 
 <div class="paragraph"> </div>
 
-
-<div class="paragraph"> </div>
-
-The point to be detailed now is about distinguishing parameters and
+ The point to be detailed now is about distinguishing parameters and
 indices.  Although this may seems a boring technical distinction,
 it is behind one of the important design choices of PBSI, and it also
-explains why PBSI may behave better than other approaches, as illustrated
-in Chapter 6.
+explains why PBSI sometimes yields better results than other approaches,
+as illustrated in Chapter 6.
 
 <div class="paragraph"> </div>
 
@@ -1441,7 +1480,7 @@ about allowed expressions for N in the definition of even or even_S_S.
 
 <div class="paragraph"> </div>
 
-Indexes are then more convenient at construction time.
+Indices are then more convenient at construction time.
 But it is the opposite at destruction time.
 To see this, consider the following alternative to even_S_S,
 where an index is used instead of a parameter.
@@ -1485,9 +1524,9 @@ then E must have the shape (even2_S_S e) where the type of e is
 
 <div class="paragraph"> </div>
 
-The simplest information contained if E' can be expressed as:
+The information contained if E' can be roughly expressed as:
 let us forget the argument of even_S_S in the type of E'; then E' must
-have the shape (even2_S_S' n' e') where n' is a fresh nat, and the type
+have the shape (even2_S_S' n' e'), where n' is a fresh nat and the type
 of e' is (even n').
 
 <div class="paragraph"> </div>
@@ -1522,10 +1561,7 @@ Hence the well-known behavior that is observed in proofs such as the following.
 </div>
 
 <div class="doc">
-
-<div class="paragraph"> </div>
-
-In general, forward reasoning is more natural.
+Forward reasoning is often more natural.
 Indeed, it is also possible to use forward reasoning successfully
 on the hypothesis E' in the above proof.
 The general trick consists in adding a suitable additional
@@ -1599,7 +1635,7 @@ what is to come in Chapter 6 below.
 
 <div class="paragraph"> </div>
 
-Consider a correct-byconstruction half function that is
+Consider a correct-by-construction half function that is
 expected to work on even numbers only.
 It can be defined using my_even_proxy.
 
@@ -1659,9 +1695,9 @@ as shown by the next attempt.
 </div>
 
 <div class="doc">
-   We could then try a weaker version with a result of sort Prop
-   rather than Set.  We then see that the recursive call is not on n,
-   but on the fresh n' provided by even_S_S', with two additional issues:
+We could then try a weaker version with a result of sort Prop
+    rather than Set.  We then see that the recursive call is not on n,
+    but on the fresh n' provided by even_S_S', with two additional issues:
 <ul class="doclist">
 <li> the guard condition would then be violated
 
@@ -1705,12 +1741,12 @@ Those issues could be managed by introducing "n = n'" in the return clause
 </div>
 
 <div class="doc">
-<a id="lab12"></a><h1 class="section">Chapter 6: more advanced example(s)</h1>
+<a id="lab15"></a><h1 class="section">Chapter 6: more advanced example(s)</h1>
 
 <div class="paragraph"> </div>
 
- Now we consider a more interesting relation than the above nextcolor:
-    the semantics of well-typed expressions.
+ In this chapter we consider a more interesting relation than the above
+    nextcolor: the semantics of well-typed expressions.
     We use the source language provided in a seminal paper by Mc Carthy
     and Painter, 1967. 
 <div class="paragraph"> </div>
@@ -1776,6 +1812,8 @@ Making some arguments implicit for later usage
 <div class="code">
 <span class="id" title="keyword">Arguments</span> <span class="id" title="var">WTCst_Cst</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>}.<br/>
 <span class="id" title="keyword">Arguments</span> <span class="id" title="var">WTPlus_Plus</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>}.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">well_typed_Plus</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>} <span class="id" title="var">_</span>.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">well_typed_proxy</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>} <span class="id" title="var">_</span>.<br/>
 <span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
 
 <br/>
@@ -1786,7 +1824,7 @@ A semantics of well-typed expressions can be defined by recursion
     on expressions, then small inversion on well-typing.
     Note that here, both the tactic inversion and dependent
     elimination of Equations fail (complicated workarounds are
-    possible, anyway PBSI behaves much better).
+    possible, but PBSI behaves much better).
     For convenience, we first write a draft version in interactive mode,
     in order to highlight the effect of inversions.
     But it would be bad practice to consider this version as the definitive
@@ -1825,28 +1863,44 @@ A semantics of well-typed expressions can be defined by recursion
 
 <div class="doc">
 Note that defining a function that can be used later in the statement
-    of theorems is BAD PRACTICE, because the very meaning of such theorems
+    of theorems is BAD PRACTICE, because the meaning of such theorems
     comes from the very body of the program that defines the function.
-    In this case, semE can be used to state the correctness of a compiler.
-    But the above definition uses tactics, whereas the tactic languqge
+    In this case, semE could be used to state the correctness of a compiler.
+    But the above definition uses tactics, whereas the tactic language
     is NOT in the TCB of Rocq and does not have a properly defined semantic.
     Fortunately PBSI can be used directly.
     First, we can use "invproxy w" with additional information. 
-<div class="paragraph"> </div>
+</div>
+<div class="code">
 
- Advanced usage of PBSI, using classes 
+<br/>
+<span class="id" title="keyword">Unset</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">Dependent</span> <span class="id" title="var">InvProxy</span> <span class="id" title="keyword">for</span> <span class="id" title="var">well_typed</span> <span class="id" title="keyword">with</span> <span class="id" title="var">index</span> 0.<br/>
+</div>
+
+<div class="doc">
+Making some arguments implicit for later usage 
+</div>
+<div class="code">
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">well_typed_dproxy</span> {<span class="id" title="var">_</span> <span class="id" title="var">_</span>} <span class="id" title="var">_</span>.<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span> .<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Advanced usage of PBSI 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">semE</span> {<span class="id" title="var">t</span>} (<span class="id" title="var">e</span> : <span class="id" title="var">exp</span>) : <span class="id" title="var">well_typed</span> <span class="id" title="var">e</span> <span class="id" title="var">t</span> → <span class="id" title="var">value</span> <span class="id" title="var">t</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">e</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">Cst</span> <span class="id" title="var">t'</span> <span class="id" title="var">v</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTCst_Cst</span> <span class="id" title="tactic">in</span> <span class="id" title="var">well_typed_Cst</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">t</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">w</span> <span class="id" title="keyword">return</span> <span class="id" title="var">value</span> <span class="id" title="var">t</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">v</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTCst_Cst</span> := <span class="id" title="var">well_typed_proxy</span> <span class="id" title="var">w</span> <span class="id" title="tactic">in</span> <span class="id" title="var">v</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">Plus</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTPlus_Plus</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span> <span class="id" title="tactic">in</span> <span class="id" title="var">well_typed_Plus</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">t</span> := <span class="id" title="var">invproxy</span> <span class="id" title="var">w</span> <span class="id" title="keyword">return</span> <span class="id" title="var">value</span> <span class="id" title="var">t</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTPlus_Plus</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span> <span class="id" title="tactic">in</span> <span class="id" title="var">well_typed_Plus</span> <span class="id" title="var">t</span> := <span class="id" title="var">well_typed_proxy</span> <span class="id" title="var">w</span> <span class="id" title="keyword">return</span> <span class="id" title="var">value</span> <span class="id" title="var">t</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">semE</span> <span class="id" title="var">e1</span> <span class="id" title="var">w1</span> + <span class="id" title="var">semE</span> <span class="id" title="var">e2</span> <span class="id" title="var">w2</span><br/>
 &nbsp;&nbsp;| <span class="id" title="var">Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">wb</span>, <span class="id" title="var">w1</span>, <span class="id" title="var">w2</span>) := <span class="id" title="var">invproxy</span> <span class="id" title="var">w</span> : <span class="id" title="var">well_typed_Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">t</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">wb</span>, <span class="id" title="var">w1</span>, <span class="id" title="var">w2</span>) := <span class="id" title="var">well_typed_proxy</span> <span class="id" title="var">w</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="keyword">if</span> <span class="id" title="var">semE</span> <span class="id" title="var">eb</span> <span class="id" title="var">wb</span> <span class="id" title="keyword">then</span> <span class="id" title="var">semE</span> <span class="id" title="var">e1</span> <span class="id" title="var">w1</span> <span class="id" title="keyword">else</span> <span class="id" title="var">semE</span> <span class="id" title="var">e2</span> <span class="id" title="var">w2</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
@@ -1854,52 +1908,7 @@ Note that defining a function that can be used later in the statement
 </div>
 
 <div class="doc">
-We can also define our own proxy function, so that the code
-    is even more explicit 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Module</span> <span class="id" title="var">MyProxy</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">well_typed_dispatch</span> <span class="id" title="var">e</span> : <span class="id" title="var">ty</span> → <span class="id" title="keyword">Prop</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">e</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Cst</span> <span class="id" title="var">t</span> <span class="id" title="var">v</span> ⇒ <span class="id" title="var">well_typed_Cst</span> <span class="id" title="var">t</span> <span class="id" title="var">v</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Plus</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="var">well_typed_Plus</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="var">well_typed_Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span><br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Definition</span> <span class="id" title="var">well_typed_sinv</span> {<span class="id" title="var">e</span> <span class="id" title="var">t</span>} (<span class="id" title="var">w</span> : <span class="id" title="var">well_typed</span> <span class="id" title="var">e</span> <span class="id" title="var">t</span>) : <span class="id" title="var">well_typed_dispatch</span> <span class="id" title="var">e</span> <span class="id" title="var">t</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">w</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">WTCst</span> <span class="id" title="var">t</span> <span class="id" title="var">w</span> ⇒ <span class="id" title="var">WTCst_Cst</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">WTPlus</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span> ⇒ <span class="id" title="var">WTPlus_Plus</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">WTIfte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">t</span> <span class="id" title="var">wb</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span> ⇒ <span class="id" title="var">WTIfte_Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">t</span> <span class="id" title="var">wb</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span><br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">semE</span> {<span class="id" title="var">t</span>} (<span class="id" title="var">e</span> : <span class="id" title="var">exp</span>) : <span class="id" title="var">well_typed</span> <span class="id" title="var">e</span> <span class="id" title="var">t</span> → <span class="id" title="var">value</span> <span class="id" title="var">t</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">e</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Cst</span> <span class="id" title="var">t'</span> <span class="id" title="var">v</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTCst_Cst</span> <span class="id" title="tactic">in</span> <span class="id" title="var">well_typed_Cst</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">t</span> := <span class="id" title="var">well_typed_sinv</span> <span class="id" title="var">w</span> <span class="id" title="keyword">return</span> <span class="id" title="var">value</span> <span class="id" title="var">t</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">v</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Plus</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<span class="id" title="var">WTPlus_Plus</span> <span class="id" title="var">w1</span> <span class="id" title="var">w2</span> <span class="id" title="tactic">in</span> <span class="id" title="var">well_typed_Plus</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">t</span> := <span class="id" title="var">well_typed_sinv</span> <span class="id" title="var">w</span> <span class="id" title="keyword">return</span> <span class="id" title="var">value</span> <span class="id" title="var">t</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">semE</span> <span class="id" title="var">e1</span> <span class="id" title="var">w1</span> + <span class="id" title="var">semE</span> <span class="id" title="var">e2</span> <span class="id" title="var">w2</span><br/>
-&nbsp;&nbsp;| <span class="id" title="var">Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">w</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> (<span class="id" title="var">wb</span>, <span class="id" title="var">w1</span>, <span class="id" title="var">w2</span>) := <span class="id" title="var">well_typed_sinv</span> <span class="id" title="var">w</span> : <span class="id" title="var">well_typed_Ifte</span> <span class="id" title="var">eb</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">t</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="keyword">if</span> <span class="id" title="var">semE</span> <span class="id" title="var">eb</span> <span class="id" title="var">wb</span> <span class="id" title="keyword">then</span> <span class="id" title="var">semE</span> <span class="id" title="var">e1</span> <span class="id" title="var">w1</span> <span class="id" title="keyword">else</span> <span class="id" title="var">semE</span> <span class="id" title="var">e2</span> <span class="id" title="var">w2</span><br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">MyProxy</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-<a id="lab13"></a><h1 class="section">Chapter 7: advanced tuning of PBSI</h1>
+<a id="lab16"></a><h1 class="section">Chapter 7: advanced tuning of PBSI</h1>
 
 <div class="paragraph"> </div>
 
@@ -1921,6 +1930,11 @@ We can also define our own proxy function, so that the code
 <span class="id" title="keyword">Definition</span> <span class="id" title="var">FAKE</span> := <span class="id" title="keyword">Prop</span>.<br/>
 
 <br/>
+<span class="id" title="keyword">Unset</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span>.<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">InvProxy</span> <span class="id" title="keyword">for</span> <span class="id" title="var">le2</span>.<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span>.<br/>
+
+<br/>
 </div>
 
 <div class="doc">
@@ -1929,7 +1943,7 @@ By default, the Derive InvProxy command build proxies for the
     However this is not relevant in the Lemma le2_n_1_small below,
     where, as in nextcolor3, only the second index is constructed.
     Additionally, the shape of the second index is very specific.
-    
+ 
 </div>
 <div class="code">
 
@@ -1937,8 +1951,11 @@ By default, the Derive InvProxy command build proxies for the
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">le2_n_1_small</span> <span class="id" title="var">n</span> : <span class="id" title="var">le2</span> <span class="id" title="var">n</span> 1 → <span class="id" title="var">n</span> = 0 ∨ <span class="id" title="var">n</span> = 1.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intro</span> <span class="id" title="var">l</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">Fail</span> <span class="id" title="var">sinv</span> <span class="id" title="var">l</span> .<br/>
+<span class="id" title="keyword">Abort</span>.<br/>
 
 <br/>
+<span class="id" title="keyword">Reset</span> <span class="id" title="var">FAKE</span>.<br/>
 
 <br/>
 </div>
@@ -1949,19 +1966,40 @@ We actually need an accurate proxy, that can be obtained using
     of indices. 
 </div>
 <div class="code">
-<span class="id" title="keyword">Print</span> <span class="id" title="var">pilotInversion</span>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">inversion_pattern</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Unset</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span>.<br/>
 <span class="id" title="keyword">Derive</span> <span class="id" title="var">InvProxy</span> <span class="id" title="keyword">for</span> <span class="id" title="var">le2</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">with</span> <span class="id" title="tactic">pattern</span>(<span class="id" title="var">pilotInversion</span> 1 [<span class="id" title="var">noInversion</span>; <span class="id" title="var">pilotInversion</span> 1 [<span class="id" title="var">noInversion</span>; <span class="id" title="var">noInversion</span>]]).<br/>
 <span class="id" title="keyword">Set</span> <span class="id" title="var">Elimination</span> <span class="id" title="var">Schemes</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Now, sinv will work. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">le2_n_1_small</span> <span class="id" title="var">n</span> : <span class="id" title="var">le2</span> <span class="id" title="var">n</span> 1 → <span class="id" title="var">n</span> = 0 ∨ <span class="id" title="var">n</span> = 1.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intro</span> <span class="id" title="var">l</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">sinv</span> <span class="id" title="var">l</span> <span class="id" title="keyword">as</span> [ | <span class="id" title="var">n</span> <span class="id" title="var">l'</span>].<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">left</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">right</span>; <span class="id" title="var">sinv</span> <span class="id" title="var">l'</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
+</div>
+
+<div class="doc">
+As finding the correct pattern is not straightforward, we also provide the
+    command "Create_sinv_call y" that, for a given algebraically typed term y,
+    prints an invocation to "Derive InvProxy" with a suitable pattern for this y.
+    It can only be used in interactive proof mode.
+    Let us restart just before the definition of FAKE. 
+</div>
+<div class="code">
 
 <br/>
 <span class="id" title="keyword">Reset</span> <span class="id" title="var">FAKE</span>.<br/>
@@ -2016,7 +2054,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#global_D">D</a></td>
 <td><a href="index.html#global_E">E</a></td>
 <td><a href="index.html#global_F">F</a></td>
-<td><a href="index.html#global_G">G</a></td>
+<td>G</td>
 <td><a href="index.html#global_H">H</a></td>
 <td><a href="index.html#global_I">I</a></td>
 <td>J</td>
@@ -2024,10 +2062,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#global_L">L</a></td>
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
-<td><a href="index.html#global_O">O</a></td>
+<td>O</td>
 <td><a href="index.html#global_P">P</a></td>
 <td>Q</td>
-<td><a href="index.html#global_R">R</a></td>
+<td>R</td>
 <td><a href="index.html#global_S">S</a></td>
 <td><a href="index.html#global_T">T</a></td>
 <td>U</td>
@@ -2038,13 +2076,13 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(157 entries)</td>
+<td>(195 entries)</td>
 </tr>
 <tr>
 <td>Module Index</td>
 <td>A</td>
 <td>B</td>
-<td>C</td>
+<td><a href="index.html#module_C">C</a></td>
 <td>D</td>
 <td><a href="index.html#module_E">E</a></td>
 <td>F</td>
@@ -2054,7 +2092,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>J</td>
 <td>K</td>
 <td>L</td>
-<td><a href="index.html#module_M">M</a></td>
+<td>M</td>
 <td>N</td>
 <td>O</td>
 <td>P</td>
@@ -2107,8 +2145,8 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <tr>
 <td>Lemma Index</td>
 <td>A</td>
-<td><a href="index.html#lemma_B">B</a></td>
-<td>C</td>
+<td>B</td>
+<td><a href="index.html#lemma_C">C</a></td>
 <td><a href="index.html#lemma_D">D</a></td>
 <td><a href="index.html#lemma_E">E</a></td>
 <td>F</td>
@@ -2118,10 +2156,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>J</td>
 <td>K</td>
 <td><a href="index.html#lemma_L">L</a></td>
-<td><a href="index.html#lemma_M">M</a></td>
+<td>M</td>
 <td><a href="index.html#lemma_N">N</a></td>
 <td>O</td>
-<td><a href="index.html#lemma_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td>R</td>
 <td>S</td>
@@ -2134,7 +2172,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(23 entries)</td>
+<td>(24 entries)</td>
 </tr>
 <tr>
 <td>Constructor Index</td>
@@ -2144,7 +2182,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>D</td>
 <td><a href="index.html#constructor_E">E</a></td>
 <td>F</td>
-<td><a href="index.html#constructor_G">G</a></td>
+<td>G</td>
 <td>H</td>
 <td><a href="index.html#constructor_I">I</a></td>
 <td>J</td>
@@ -2152,10 +2190,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#constructor_L">L</a></td>
 <td>M</td>
 <td><a href="index.html#constructor_N">N</a></td>
-<td><a href="index.html#constructor_O">O</a></td>
+<td>O</td>
 <td><a href="index.html#constructor_P">P</a></td>
 <td>Q</td>
-<td><a href="index.html#constructor_R">R</a></td>
+<td>R</td>
 <td>S</td>
 <td>T</td>
 <td>U</td>
@@ -2166,7 +2204,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(35 entries)</td>
+<td>(49 entries)</td>
 </tr>
 <tr>
 <td>Inductive Index</td>
@@ -2183,7 +2221,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>K</td>
 <td><a href="index.html#inductive_L">L</a></td>
 <td>M</td>
-<td><a href="index.html#inductive_N">N</a></td>
+<td>N</td>
 <td>O</td>
 <td>P</td>
 <td>Q</td>
@@ -2198,7 +2236,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(17 entries)</td>
+<td>(26 entries)</td>
 </tr>
 <tr>
 <td>Instance Index</td>
@@ -2230,7 +2268,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(2 entries)</td>
+<td>(1 entry)</td>
 </tr>
 <tr>
 <td>Definition Index</td>
@@ -2247,7 +2285,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>K</td>
 <td><a href="index.html#definition_L">L</a></td>
 <td><a href="index.html#definition_M">M</a></td>
-<td><a href="index.html#definition_N">N</a></td>
+<td>N</td>
 <td>O</td>
 <td>P</td>
 <td>Q</td>
@@ -2262,26 +2300,77 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(73 entries)</td>
+<td>(88 entries)</td>
 </tr>
 </table>
 <hr/>
 <h1>Global Index</h1>
 <a id="global_B"></a><h2>B </h2>
-<a href="Examples.tutorial_PBSI.html#between_Green_Red">between_Green_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#between_Green_Red">between_Green_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#Bool">Bool</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_C"></a><h2>C </h2>
-<a href="Examples.tutorial_PBSI.html#color">color</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color">color</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_sind">color_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rec">color_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_ind">color_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rect">color_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_sind">color_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rec">color_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_ind">color_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rect">color_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red_new">Chapters_2_3.prevcolor3_Red_new</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.FAKE">Chapters_2_3.FAKE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor3">Chapters_2_3.nextcolor3</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.between_Green_Red">Chapters_2_3.between_Green_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_sind">Chapters_2_3.nextcolor_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_ind">Chapters_2_3.nextcolor_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncRG">Chapters_2_3.ncRG</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncOR">Chapters_2_3.ncOR</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncGO">Chapters_2_3.ncGO</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor">Chapters_2_3.nextcolor</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_sind">Chapters_2_3.color_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rec">Chapters_2_3.color_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_ind">Chapters_2_3.color_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rect">Chapters_2_3.color_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Green">Chapters_2_3.Green</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Orange">Chapters_2_3.Orange</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Red">Chapters_2_3.Red</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color">Chapters_2_3.color</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.between_Green_Red">Chapters_2_3.between_Green_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.FAKE">Chapters_2_3.FAKE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_sind">Chapters_2_3.nextcolor_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_ind">Chapters_2_3.nextcolor_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncRG">Chapters_2_3.ncRG</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncOR">Chapters_2_3.ncOR</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncGO">Chapters_2_3.ncGO</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor">Chapters_2_3.nextcolor</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_sind">Chapters_2_3.color_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rec">Chapters_2_3.color_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_ind">Chapters_2_3.color_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rect">Chapters_2_3.color_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Green">Chapters_2_3.Green</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Orange">Chapters_2_3.Orange</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Red">Chapters_2_3.Red</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color">Chapters_2_3.color</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.map2_stupid">Chapters_2_3.map2_stupid</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_dproxy">Chapters_2_3.my_vect_dproxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_dproxy_type">Chapters_2_3.my_vect_dproxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_proxy">Chapters_2_3.my_vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_proxy_type">Chapters_2_3.my_vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.make_hd_tl">Chapters_2_3.make_hd_tl</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.make_hd_tl">Chapters_2_3.make_hd_tl</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.tl">Chapters_2_3.tl</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.map2">Chapters_2_3.map2</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_cons_asym">Chapters_2_3.hd_cons_asym</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_asym">Chapters_2_3.hd_asym</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_let_cons">Chapters_2_3.hd_let_cons</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_let">Chapters_2_3.hd_let</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_gen">Chapters_2_3.hd_gen</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd">Chapters_2_3.hd</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_sind">Chapters_2_3.vect_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_rec">Chapters_2_3.vect_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_ind">Chapters_2_3.vect_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_rect">Chapters_2_3.vect_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.cons">Chapters_2_3.cons</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nil">Chapters_2_3.nil</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect">Chapters_2_3.vect</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3">Chapters_2_3</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#cons">cons</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#Cst">Cst</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_D"></a><h2>D </h2>
@@ -2294,7 +2383,6 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#even_S_S'">even_S_S'</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_cancel_S_S_inversion">even_cancel_S_S_inversion</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_cancel_S_S_handcrafted">even_cancel_S_S_handcrafted</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#even_proxy_type">even_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_cancel_S_S_explanation">even_cancel_S_S_explanation</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_plus_cancel">even_plus_cancel</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_cancel_S_S">even_cancel_S_S</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2306,18 +2394,34 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#even2_S_S'">even2_S_S'</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd">ExampleIndependent.hd</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd">ExampleIndependent.hd</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.inst_vect_proxy">ExampleIndependent.inst_vect_proxy</a> [instance, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_class">ExampleIndependent.hd_class</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_let_cons">ExampleIndependent.hd_let_cons</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_let">ExampleIndependent.hd_let</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_instance">ExampleIndependent.vect_instance</a> [instance, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [instance, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#exp">exp</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2327,28 +2431,20 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#exp_rect">exp_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_F"></a><h2>F </h2>
 <a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="global_G"></a><h2>G </h2>
-<a href="Examples.tutorial_PBSI.html#Green">Green</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Green">Green</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_H"></a><h2>H </h2>
 <a href="Examples.tutorial_PBSI.html#half">half</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#half'">half'</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#half'">half'</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd">hd</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_my">hd_my</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_cons_asym">hd_cons_asym</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_asym">hd_asym</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_cons">hd_cons</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_PAT">hd_PAT</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_optimistic">hd_optimistic</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_I"></a><h2>I </h2>
 <a href="Examples.tutorial_PBSI.html#Ifte">Ifte</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_L"></a><h2>L </h2>
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2">le2</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_sind">le2_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_sind">le2_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2361,76 +2457,53 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#LS">LS</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#L0">L0</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_M"></a><h2>M </h2>
-<a href="Examples.tutorial_PBSI.html#make_hd_tl">make_hd_tl</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#make_hd_tl">make_hd_tl</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#map2">map2</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#map2_stupid">map2_stupid</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#my_even_proxy'">my_even_proxy'</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#my_vect_dproxy">my_vect_dproxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#my_vect_proxy">my_vect_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#my_even_proxy">my_even_proxy</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_N"></a><h2>N </h2>
 <a href="Examples.tutorial_PBSI.html#Nat">Nat</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncGO">ncGO</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncGO">ncGO</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncOR">ncOR</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncOR">ncOR</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncRG">ncRG</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncRG">ncRG</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor">nextcolor</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor">nextcolor</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_sind">nextcolor_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_ind">nextcolor_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_sind">nextcolor_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_ind">nextcolor_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor3">nextcolor3</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#nil">nil</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#no_even_1_explanation">no_even_1_explanation</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#no_even_1">no_even_1</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="global_O"></a><h2>O </h2>
-<a href="Examples.tutorial_PBSI.html#Orange">Orange</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Orange">Orange</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_P"></a><h2>P </h2>
 <a href="Examples.tutorial_PBSI.html#Plus">Plus</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red_new">prevcolor3_Red_new</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [lemma, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="global_R"></a><h2>R </h2>
-<a href="Examples.tutorial_PBSI.html#Red">Red</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Red">Red</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_S"></a><h2>S </h2>
 <a href="Examples.tutorial_PBSI.html#Script">Script</a> [module, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#Script.semE">Script.semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#semE">semE</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_T"></a><h2>T </h2>
-<a href="Examples.tutorial_PBSI.html#tl">tl</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="tutorial_PBSI.html">tutorial_PBSI</a> [library]<br/>
 <a href="Examples.tutorial_PBSI.html#twice">twice</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ty">ty</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="global_V"></a><h2>V </h2>
 <a href="Examples.tutorial_PBSI.html#value">value</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect">vect</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#vect_dproxy_type">vect_dproxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#vect_proxy_type">vect_proxy_type</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [inductive, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [definition, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2444,13 +2517,13 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#WTPlus">WTPlus</a> [constructor, in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><hr/>
 <h1>Module Index</h1>
-<a id="module_E"></a><h2>E </h2>
+<a id="module_C"></a><h2>C </h2>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3">Chapters_2_3</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<br/><br/><a id="module_E"></a><h2>E </h2>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="module_M"></a><h2>M </h2>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy">MyProxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent">ExampleIndependent</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="module_S"></a><h2>S </h2>
 <a href="Examples.tutorial_PBSI.html#Script">Script</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><hr/>
@@ -2459,9 +2532,16 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="tutorial_PBSI.html">tutorial_PBSI</a> <br/>
 <br/><br/><hr/>
 <h1>Lemma Index</h1>
-<a id="lemma_B"></a><h2>B </h2>
-<a href="Examples.tutorial_PBSI.html#between_Green_Red">between_Green_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#between_Green_Red">between_Green_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a id="lemma_C"></a><h2>C </h2>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red_new">Chapters_2_3.prevcolor3_Red_new</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.prevcolor3_Red">Chapters_2_3.prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor3">Chapters_2_3.nextcolor3</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.between_Green_Red">Chapters_2_3.between_Green_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.between_Green_Red">Chapters_2_3.between_Green_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.make_hd_tl">Chapters_2_3.make_hd_tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.make_hd_tl">Chapters_2_3.make_hd_tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="lemma_D"></a><h2>D </h2>
 <a href="Examples.tutorial_PBSI.html#demo_parameter_index_PBSI">demo_parameter_index_PBSI</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#demo_parameter_index">demo_parameter_index</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2477,23 +2557,32 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="lemma_M"></a><h2>M </h2>
-<a href="Examples.tutorial_PBSI.html#make_hd_tl">make_hd_tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#make_hd_tl">make_hd_tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_n_1_small">le2_n_1_small</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="lemma_N"></a><h2>N </h2>
-<a href="Examples.tutorial_PBSI.html#nextcolor3">nextcolor3</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#no_even_1_explanation">no_even_1_explanation</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#no_even_1">no_even_1</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="lemma_P"></a><h2>P </h2>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red_new">prevcolor3_Red_new</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#prevcolor3_Red">prevcolor3_Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><hr/>
 <h1>Constructor Index</h1>
 <a id="constructor_B"></a><h2>B </h2>
 <a href="Examples.tutorial_PBSI.html#Bool">Bool</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_C"></a><h2>C </h2>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncRG">Chapters_2_3.ncRG</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncOR">Chapters_2_3.ncOR</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncGO">Chapters_2_3.ncGO</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Green">Chapters_2_3.Green</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Orange">Chapters_2_3.Orange</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Red">Chapters_2_3.Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncRG">Chapters_2_3.ncRG</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncOR">Chapters_2_3.ncOR</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.ncGO">Chapters_2_3.ncGO</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Green">Chapters_2_3.Green</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Orange">Chapters_2_3.Orange</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.Red">Chapters_2_3.Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.cons">Chapters_2_3.cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nil">Chapters_2_3.nil</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#cons">cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#cons">cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#Cst">Cst</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_E"></a><h2>E </h2>
@@ -2502,37 +2591,31 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#even2_S_S'">even2_S_S'</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.cons_S">ExampleIndependent.cons_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="constructor_G"></a><h2>G </h2>
-<a href="Examples.tutorial_PBSI.html#Green">Green</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Green">Green</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.nil_O">ExampleIndependent.nil_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_I"></a><h2>I </h2>
 <a href="Examples.tutorial_PBSI.html#Ifte">Ifte</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_L"></a><h2>L </h2>
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#LS">LS</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#LS">LS</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#L0">L0</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#L0">L0</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_N"></a><h2>N </h2>
 <a href="Examples.tutorial_PBSI.html#Nat">Nat</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncGO">ncGO</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncGO">ncGO</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncOR">ncOR</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncOR">ncOR</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncRG">ncRG</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ncRG">ncRG</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#nil">nil</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="constructor_O"></a><h2>O </h2>
-<a href="Examples.tutorial_PBSI.html#Orange">Orange</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Orange">Orange</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#nil">nil</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_P"></a><h2>P </h2>
 <a href="Examples.tutorial_PBSI.html#Plus">Plus</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="constructor_R"></a><h2>R </h2>
-<a href="Examples.tutorial_PBSI.html#Red">Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#Red">Red</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="constructor_W"></a><h2>W </h2>
 <a href="Examples.tutorial_PBSI.html#WTCst">WTCst</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#WTIfte">WTIfte</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2540,11 +2623,18 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <br/><br/><hr/>
 <h1>Inductive Index</h1>
 <a id="inductive_C"></a><h2>C </h2>
-<a href="Examples.tutorial_PBSI.html#color">color</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color">color</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor">Chapters_2_3.nextcolor</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color">Chapters_2_3.color</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor">Chapters_2_3.nextcolor</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color">Chapters_2_3.color</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect">Chapters_2_3.vect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="inductive_E"></a><h2>E </h2>
 <a href="Examples.tutorial_PBSI.html#even">even</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_S_S'">even_S_S'</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_O">ExampleIndependent.vect_O</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_S">ExampleIndependent.vect_S</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2554,38 +2644,67 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2">le2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="inductive_N"></a><h2>N </h2>
-<a href="Examples.tutorial_PBSI.html#nextcolor">nextcolor</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor">nextcolor</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2">le2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="inductive_T"></a><h2>T </h2>
 <a href="Examples.tutorial_PBSI.html#ty">ty</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="inductive_V"></a><h2>V </h2>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect">vect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect">vect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="inductive_W"></a><h2>W </h2>
 <a href="Examples.tutorial_PBSI.html#well_typed">well_typed</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><hr/>
 <h1>Instance Index</h1>
 <a id="instance_E"></a><h2>E </h2>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.inst_vect_proxy">ExampleIndependent.inst_vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_instance">ExampleIndependent.vect_instance</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><hr/>
 <h1>Definition Index</h1>
 <a id="definition_C"></a><h2>C </h2>
-<a href="Examples.tutorial_PBSI.html#color_sind">color_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rec">color_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_ind">color_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rect">color_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_sind">color_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rec">color_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_ind">color_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#color_rect">color_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.FAKE">Chapters_2_3.FAKE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_sind">Chapters_2_3.nextcolor_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_ind">Chapters_2_3.nextcolor_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_sind">Chapters_2_3.color_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rec">Chapters_2_3.color_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_ind">Chapters_2_3.color_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rect">Chapters_2_3.color_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.FAKE">Chapters_2_3.FAKE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_sind">Chapters_2_3.nextcolor_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.nextcolor_ind">Chapters_2_3.nextcolor_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_sind">Chapters_2_3.color_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rec">Chapters_2_3.color_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_ind">Chapters_2_3.color_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.color_rect">Chapters_2_3.color_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.map2_stupid">Chapters_2_3.map2_stupid</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_dproxy">Chapters_2_3.my_vect_dproxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_dproxy_type">Chapters_2_3.my_vect_dproxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_proxy">Chapters_2_3.my_vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.my_vect_proxy_type">Chapters_2_3.my_vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.tl">Chapters_2_3.tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.map2">Chapters_2_3.map2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_cons_asym">Chapters_2_3.hd_cons_asym</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_asym">Chapters_2_3.hd_asym</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_let_cons">Chapters_2_3.hd_let_cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_let">Chapters_2_3.hd_let</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd_gen">Chapters_2_3.hd_gen</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.hd">Chapters_2_3.hd</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_sind">Chapters_2_3.vect_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_rec">Chapters_2_3.vect_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_ind">Chapters_2_3.vect_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#Chapters_2_3.vect_rect">Chapters_2_3.vect_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_E"></a><h2>E </h2>
 <a href="Examples.tutorial_PBSI.html#even_proxy'_type">even_proxy'_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#even_proxy_type">even_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_sind">even_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#even_ind">even_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd">ExampleIndependent.hd</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd">ExampleIndependent.hd</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_class">ExampleIndependent.hd_class</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_let_cons">ExampleIndependent.hd_let_cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.hd_let">ExampleIndependent.hd_let</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy">ExampleIndependent.vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#ExampleIndependent.vect_proxy_type">ExampleIndependent.vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#exp_sind">exp_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2594,19 +2713,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#exp_rect">exp_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_F"></a><h2>F </h2>
 <a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#FAKE">FAKE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_H"></a><h2>H </h2>
 <a href="Examples.tutorial_PBSI.html#half">half</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#half'">half'</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#half'">half'</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd">hd</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_my">hd_my</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_cons_asym">hd_cons_asym</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_asym">hd_asym</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_cons">hd_cons</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_PAT">hd_PAT</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#hd_optimistic">hd_optimistic</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_L"></a><h2>L </h2>
 <a href="Examples.tutorial_PBSI.html#le2_sind">le2_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2614,39 +2724,33 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_sind">le2_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_sind">le2_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#le2_ind">le2_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_M"></a><h2>M </h2>
-<a href="Examples.tutorial_PBSI.html#map2">map2</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#map2_stupid">map2_stupid</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.semE">MyProxy.semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_sinv">MyProxy.well_typed_sinv</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#MyProxy.well_typed_dispatch">MyProxy.well_typed_dispatch</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#my_even_proxy'">my_even_proxy'</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#my_vect_dproxy">my_vect_dproxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#my_vect_proxy">my_vect_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#my_even_proxy">my_even_proxy</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<br/><br/><a id="definition_N"></a><h2>N </h2>
-<a href="Examples.tutorial_PBSI.html#nextcolor_sind">nextcolor_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_ind">nextcolor_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_sind">nextcolor_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#nextcolor_ind">nextcolor_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_S"></a><h2>S </h2>
 <a href="Examples.tutorial_PBSI.html#Script.semE">Script.semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#semE">semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#semE">semE</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_T"></a><h2>T </h2>
-<a href="Examples.tutorial_PBSI.html#tl">tl</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#twice">twice</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <br/><br/><a id="definition_V"></a><h2>V </h2>
 <a href="Examples.tutorial_PBSI.html#value">value</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#vect_dproxy_type">vect_dproxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
-<a href="Examples.tutorial_PBSI.html#vect_proxy_type">vect_proxy_type</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
+<a href="Examples.tutorial_PBSI.html#vect_rect">vect_rect</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_sind">vect_sind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_rec">vect_rec</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
 <a href="Examples.tutorial_PBSI.html#vect_ind">vect_ind</a> [in <a href="Examples.tutorial_PBSI.html">Examples.tutorial_PBSI</a>]<br/>
@@ -2663,7 +2767,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#global_D">D</a></td>
 <td><a href="index.html#global_E">E</a></td>
 <td><a href="index.html#global_F">F</a></td>
-<td><a href="index.html#global_G">G</a></td>
+<td>G</td>
 <td><a href="index.html#global_H">H</a></td>
 <td><a href="index.html#global_I">I</a></td>
 <td>J</td>
@@ -2671,10 +2775,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#global_L">L</a></td>
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
-<td><a href="index.html#global_O">O</a></td>
+<td>O</td>
 <td><a href="index.html#global_P">P</a></td>
 <td>Q</td>
-<td><a href="index.html#global_R">R</a></td>
+<td>R</td>
 <td><a href="index.html#global_S">S</a></td>
 <td><a href="index.html#global_T">T</a></td>
 <td>U</td>
@@ -2685,13 +2789,13 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(157 entries)</td>
+<td>(195 entries)</td>
 </tr>
 <tr>
 <td>Module Index</td>
 <td>A</td>
 <td>B</td>
-<td>C</td>
+<td><a href="index.html#module_C">C</a></td>
 <td>D</td>
 <td><a href="index.html#module_E">E</a></td>
 <td>F</td>
@@ -2701,7 +2805,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>J</td>
 <td>K</td>
 <td>L</td>
-<td><a href="index.html#module_M">M</a></td>
+<td>M</td>
 <td>N</td>
 <td>O</td>
 <td>P</td>
@@ -2754,8 +2858,8 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <tr>
 <td>Lemma Index</td>
 <td>A</td>
-<td><a href="index.html#lemma_B">B</a></td>
-<td>C</td>
+<td>B</td>
+<td><a href="index.html#lemma_C">C</a></td>
 <td><a href="index.html#lemma_D">D</a></td>
 <td><a href="index.html#lemma_E">E</a></td>
 <td>F</td>
@@ -2765,10 +2869,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>J</td>
 <td>K</td>
 <td><a href="index.html#lemma_L">L</a></td>
-<td><a href="index.html#lemma_M">M</a></td>
+<td>M</td>
 <td><a href="index.html#lemma_N">N</a></td>
 <td>O</td>
-<td><a href="index.html#lemma_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td>R</td>
 <td>S</td>
@@ -2781,7 +2885,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(23 entries)</td>
+<td>(24 entries)</td>
 </tr>
 <tr>
 <td>Constructor Index</td>
@@ -2791,7 +2895,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>D</td>
 <td><a href="index.html#constructor_E">E</a></td>
 <td>F</td>
-<td><a href="index.html#constructor_G">G</a></td>
+<td>G</td>
 <td>H</td>
 <td><a href="index.html#constructor_I">I</a></td>
 <td>J</td>
@@ -2799,10 +2903,10 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td><a href="index.html#constructor_L">L</a></td>
 <td>M</td>
 <td><a href="index.html#constructor_N">N</a></td>
-<td><a href="index.html#constructor_O">O</a></td>
+<td>O</td>
 <td><a href="index.html#constructor_P">P</a></td>
 <td>Q</td>
-<td><a href="index.html#constructor_R">R</a></td>
+<td>R</td>
 <td>S</td>
 <td>T</td>
 <td>U</td>
@@ -2813,7 +2917,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(35 entries)</td>
+<td>(49 entries)</td>
 </tr>
 <tr>
 <td>Inductive Index</td>
@@ -2830,7 +2934,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>K</td>
 <td><a href="index.html#inductive_L">L</a></td>
 <td>M</td>
-<td><a href="index.html#inductive_N">N</a></td>
+<td>N</td>
 <td>O</td>
 <td>P</td>
 <td>Q</td>
@@ -2845,7 +2949,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(17 entries)</td>
+<td>(26 entries)</td>
 </tr>
 <tr>
 <td>Instance Index</td>
@@ -2877,7 +2981,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(2 entries)</td>
+<td>(1 entry)</td>
 </tr>
 <tr>
 <td>Definition Index</td>
@@ -2894,7 +2998,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>K</td>
 <td><a href="index.html#definition_L">L</a></td>
 <td><a href="index.html#definition_M">M</a></td>
-<td><a href="index.html#definition_N">N</a></td>
+<td>N</td>
 <td>O</td>
 <td>P</td>
 <td>Q</td>
@@ -2909,7 +3013,7 @@ It is better practice to define the proxy before its use in le2_n_1_small.
 <td>Z</td>
 <td>_</td>
 <td>other</td>
-<td>(73 entries)</td>
+<td>(88 entries)</td>
 </tr>
 </table>
 <hr/>This page has been generated by <a href="http://rocq-prover.org/">coqdoc</a>

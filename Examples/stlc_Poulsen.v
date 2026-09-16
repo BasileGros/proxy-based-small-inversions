@@ -22,13 +22,16 @@ Module ExpLang.
   Definition Ctx := list Ty.
 
 
-  Inductive in_list{A}(x:A) : list A -> Type :=
+  Inductive in_list {A} (x:A) : list A -> Type :=
   | here {l} : in_list x (cons x l)
   | there {y l} : in_list x l -> in_list x (cons y l).
 
   Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
 
+  Unset Elimination Schemes.
   Derive InvProxy for in_list.
+  Arguments in_list_proxy {_ _ _} _.
+  Set Elimination Schemes.
 
   Inductive Expr (Γ : Ctx) : Ty -> Type :=
   | boolexpr : bool -> Expr Γ Bool
@@ -55,7 +58,7 @@ Module ExpLang.
     | allnil _ => λ Hin' : x ∈ [], match invproxy Hin' in in_list_nil _ _ return (P x) with end
     | allcons _ hd tl p a =>
         fun (Hin' : in_list x (hd :: tl)) =>
-          match (in_list_proxy _ _ _).(invproxy) Hin' with
+          match in_list_proxy Hin' with
           | here_cons _ _ _ => (fun (p' : P x) (_ : All P tl) (_ : in_list x (x :: tl)) => p')
           | there_cons _ _ _ y i =>
               (fun (_ : P y) (HA' : All P tl) (_ : in_list x (y :: tl)) =>
@@ -63,7 +66,10 @@ Module ExpLang.
           end p a Hin'
     end Hin.
 
+  Unset Elimination Schemes.
   Derive InvProxy for Val.
+  Arguments Val_proxy {_} _.
+  Set Elimination Schemes.
 
   Fixpoint eval {Γ t} (exp : Expr Γ t) (E : Env Γ) : Val t :=
     match exp with
@@ -72,13 +78,13 @@ Module ExpLang.
     | var _ x => lookup E x
     | ifexpr _ c t' e =>
         let b := eval c E in
-        match invproxy b with
+        match Val_proxy b with
         | boolval_Bool b' => if b' then eval t' E else eval t' E
         end
     | plus _ e1 e2 =>
         let z1 :=  eval e1 E in
         let z2 :=  eval e2 E in
-        match invproxy z1, invproxy z2 with
+        match Val_proxy z1, Val_proxy z2 with
         | numval_Int z1', numval_Int z2' => numval (z1' + z2')
         end
     end.
@@ -108,7 +114,10 @@ Module STLC.
 
   Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
 
+  Unset Elimination Schemes.
   Derive InvProxy for in_list.
+  Arguments in_list_proxy {_ _ _} _.
+  Set Elimination Schemes.
 
   Inductive Expr (Γ : Ctx) : Ty -> Type :=
   | unitexpr : Expr Γ unit
@@ -131,16 +140,17 @@ Module STLC.
 
   Notation "'Env' Γ" := (All Val Γ)(at level 0).
 
+  Unset Elimination Schemes.
   Derive InvProxy for Val.
-
-
+  Arguments Val_proxy {_} _.
+  Set Elimination Schemes.
   
   Fixpoint lookup {A P xs}{x:A}(HA : All P xs) (Hin : x ∈ xs) : P x :=
     match HA  with
     | allnil _ => λ Hin' : x ∈ [], match invproxy Hin' in in_list_nil _ _ return (P x) with end
     | allcons _ hd tl p a =>
         fun (Hin' : in_list x (hd :: tl)) =>
-          match (in_list_proxy _ _ _).(invproxy) Hin' with
+          match in_list_proxy Hin' with
           | here_cons _ _ _ => (fun (p' : P x) (_ : All P tl) (_ : in_list x (x :: tl)) => p')
           | there_cons _ _ _ y i =>
               (fun (_ : P y) (HA' : All P tl) (_ : in_list x (y :: tl)) =>
@@ -180,7 +190,7 @@ Module STLC.
     | S k, app _ l r =>
        getEnv >>= fun E' => (eval k l) >>=
                            fun v' =>
-                             match  invproxy v' with
+                             match  Val_proxy v' with
                              | closure_implies _ _ _ e E =>
                                  (fun _ r0 _ => getEnv >>=
                                                fun _ => (eval k r0) >>=
@@ -191,11 +201,11 @@ Module STLC.
     | S k, iop _ f l r =>
        getEnv >>= fun E' => (eval k l) >>=
                            fun v =>
-                             match invproxy v with
+                             match Val_proxy v with
                              | numval_int vl => getEnv >>=
                                                  fun E' => (eval k r) >>=
                                                           fun v' =>
-                                                            match invproxy v' with
+                                                            match Val_proxy v' with
                                                             | numval_int vr => ret (numval (f vl vr))
                                                             end
                              end

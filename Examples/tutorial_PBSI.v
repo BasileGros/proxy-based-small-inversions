@@ -7,7 +7,7 @@ From SmallInversion Require Import small_inversion.
 (* ================================================================== *)
 (** * Basics *)
 
-(** We assume a (co)inductively defined type T, that is a type defined
+(** We assume a (co)inductively defined type T, that is, a type defined
 using the keywords `Inductive`, `CoInductive` or just `Variant`.
 In what follows, we use the term “algebraic type” to encompass these
 possibilities.
@@ -28,9 +28,7 @@ PBSI work in two steps:
 *)
 
 (* ==================================================================*)
-(** * Cheat sheet *)
-
-(**
+(** * Cheat sheet
   - Commands:
     Derive [Dependent] InvProxy for YourType.
     Derive [Dependent] InvProxy for YourType [with index 0,1, ...]
@@ -45,7 +43,13 @@ PBSI work in two steps:
     sdinv YourAssumption.
     sinv YourAssumption as [ ... | ... ].
 
-  - Programming constructs
+  - Programming constructs (where PAT means partial algebraic type)
+    match YourType_proxy expr with
+    let ( , ... ) := YourType_proxy expr in
+    let 'ConstructorPAT... := YourType_proxy expr in
+    let 'ConstructorPAT... in PAT... x return ... x ... := YourType_proxy expr in
+
+  - Programming constructs (OBSOLETE, TODO to be removed)
     match invproxy expr with
     let (... ) := (invproxy expr : ExpectedPartialAlgebraicType) in
     let (... ) := (YourType _ _).(invproxy) expr in
@@ -87,7 +91,7 @@ Inductive even : nat -> Prop :=
 | even2 : forall (n : nat), even n -> even (S (S n)).
 
 (** Inversion is needed when we have assumptions (even X), where X is
-    not a variable but, for instance O, (S O), (S (S ...)) *)
+    not a variable but constructed, for instance O, (S O), (S (S ...)) *)
 
 (** The following command is required to make PBSI available for even.
     Its effect is to define some auxiliary algebraic predicates (or types),
@@ -100,7 +104,7 @@ Inductive even : nat -> Prop :=
     output cleaner -- the keyword for the PATs should actually
     be "Variant" instead of "Inductive", because they are not recursive,
     even though the original algebraic relation (even, here) is itself recursive.
-    This issue comes from MetaRocq <= 1.4.1+9.1 and it should be fixed in the
+    This issue comes from MetaRocq <= 1.5.1+9.1 and it should be fixed in the
     next release.
 *)
 
@@ -109,7 +113,9 @@ Derive InvProxy for even.
 (** This defines:
     - a number of PATs for even.
       Here: even_O, even_S_O and even_S_S.
-    - a proxy function that gather them, here even_proxy.
+    - a proxy function that gather them, here even_proxy
+    - an instance of the class InvProxy, here even_instance,
+      to be used internally by our generic tactic "sinv".
     It is instructive -- and recommended -- to see the contents
     of the PATs. *)
 Print even_O.
@@ -168,15 +174,19 @@ Proof.
   | even2_S_S : even n -> even_S_S n. *)
 
   (** We also have (see below) :  even (S (S n) -> even_S_S n.
-      A proof term for this implication is provided by invproxy. *)
-  Check (invproxy e : even_S_S n).
-  (** The command "Derive InvProxy for even." actually also generated
-      a proxy for even, named "even_proxy", which is itself registered
-      as an instance of a Rocq class, so that sinv uses the proxy
-      for the relevant relation.  Indeed, "sinv e" is nothing else than
-      "destruct (invproxy e)".
-      A case analysis on (invproxy e) will then keep the only
-      relevant case, corresponding to the constructor even2. *)
+      A proof term for this implication is provided by even_proxy. *)
+  Check (even_proxy (S (S n)) : even (S (S n)) -> even_S_S n).
+  (** As a consequence: *)
+  Check (even_proxy _ e : even_S_S n).
+  (** (even_proxy _ e) can be decomposed as defined in even_S_S. *)
+  destruct (even_proxy _ e) as [e'].
+
+  (** We can also use invproxy e, because even_proxy and its type are gathered
+      in a Rocq class, so that invproxy e is convertible with (even_proxy _ e).
+      Indeed, "sinv e" is nothing else than "destruct (invproxy e)".
+   *)
+  Check eq_refl : invproxy e = even_proxy _ e.
+  Undo.
   destruct (invproxy e) as [e'].
   exact e'.
 Qed.
@@ -196,27 +206,22 @@ Proof.
   (** Here, we have no case of even x where x has the shape (S O) *)
   Print even_S_O.
   (** We also have :  even (S O) -> even_S_O. *)
+  Check (even_proxy (S O) : even (S O) -> even_S_O).
   Check (invproxy e : even_S_O).
   (** Consistently, destruct (invproxy e) generates no case to consider *)
   destruct (invproxy e).
 Qed.
 
-(** You can print even_proxy.
-    It has two fields: invproxy_type and invproxy, but unfortunately
-    readability is impaired because the body of invproxy_type is inlined
-    in invproxy. *)
+(** You can also print the type of even_proxy. *)
+Check even_proxy.
 
+(** The key is the definition of even_proxy_type, that is based on the
+    three PATS of even presented above. *)
+Print even_proxy_type.
+
+(** You could even print even_proxy and make it somewhat
+    more beautiful. *)
 Print even_proxy.
-
-(** You could then redefine it in a more readable manner as follows,
-    starting with its type. *)
-
-Definition even_proxy_type n :=
-  match n with
-  | 0 => even_O
-  | 1 => even_S_O
-  | S (S n) => even_S_S n
-  end.
 
 (** Handcrafted version of even_proxy *)
 Definition my_even_proxy {n} (e : even n) : even_proxy_type n :=
@@ -241,8 +246,10 @@ Proof.
   exact e'.
 Qed.
 
+(** You get a small proof term. *)
 Print even_cancel_S_S_handcrafted.
 
+(** See the constrast with what you get using the tactic inversion. *)
 Lemma even_cancel_S_S_inversion n : even (S (S n)) -> even n.
 Proof.
   intro e. inversion e. assumption.
@@ -271,6 +278,9 @@ Print even_cancel_S_S_inversion.
     Here, the type of nil is (vect A O), whereas the type of (cons... )
     is (vect A (S n)) *)
 
+Module Chapters_2_3.
+
+
 Inductive vect (A : Type) : nat -> Type :=
 | nil : vect A O
 | cons : forall n, A -> vect A n -> vect A (S n).
@@ -278,6 +288,14 @@ Inductive vect (A : Type) : nat -> Type :=
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for vect.
 Set Elimination Schemes (* For comfort *).
+
+(** vect_proxy will be used below in programs *)
+About vect_proxy.
+(** We see that its main argument is a vector, preceded by its
+    parameter and its index.  It is more convenient for these last two
+    to be declared as implicit. *)
+Arguments vect_proxy {_ _} _.
+
 
 (** The head and tail function make sense only for vectors with
      a strictly positive length. *)
@@ -294,9 +312,19 @@ Print cons_S.
     pattern matching. *)
 
 Definition hd {A n} (u : vect A (S n)) : A :=
+  match vect_proxy u with
+  | cons_S _ _ x u' => x
+  end.
+
+
+(** For the record, the class mechanism mentioned above can
+    also be used, using the generic name "invproxy". *)
+
+Definition hd_gen {A n} (u : vect A (S n)) : A :=
   match invproxy u with
   | cons_S _ _ x u' => x
   end.
+
 
 (* ---------------------------------------------------------------------- *)
 (** ** Deconstructing let *)
@@ -304,52 +332,56 @@ Definition hd {A n} (u : vect A (S n)) : A :=
 (** This section can be skipped at first reading *)
 
 (** Equivalently, you can use a deconstructing let.
-    However a naive attempt fails, because there is not enough
-    information to perform type inference. *)
-Fail Definition hd_optimistic {A n} (u : vect A (S n)) : A :=
-  let (x, u') := (invproxy u) in x.
-
-(** You should then use one of the 3 more verbose following methods. *)
+     You can use one of the 2 following methods. *)
 
 (** Method 1: agnostic in the name of the constructor,
     completely generic, by specifying the proxy instance to be used,
-    here vect_proxy, the name printed by "Derive InvProxy for vect. *)
-Definition hd_inst {A n} (u : vect A (S n)) : A :=
-  let (x, u') := (vect_proxy _ _ ).(invproxy) u in x.
+    here vect_proxy, the name printed by "Derive InvProxy for vect". *)
+Definition hd_let {A n} (u : vect A (S n)) : A :=
+  let (x, u') := vect_proxy u in x.
 
-(** Method 2: agnostic in the name of the constructor,
-    by specifying the expected PAT,
-    here vect_S A n, where vect_S is the relevant name
-    printed by "Derive InvProxy for vect. *)
-Definition hd_PAT {A n} (u : vect A (S n)) : A :=
-  let (x, u') := (invproxy u : vect_S A n) in x.
-
-  (** Method 3: deconstructing let that uses the name of the expected
-      constructor, here cons_S, as in the above "match invproxy u". *)
-Definition hd_cons {A n} (u : vect A (S n)) : A :=
-  let 'cons_S _ _ x u' := invproxy u in x.
+(** Method 2: deconstructing let that uses the name of the expected
+      constructor, here cons_S, as in the above "match vect_proxy u". *)
+Definition hd_let_cons {A n} (u : vect A (S n)) : A :=
+  let 'cons_S _ _ x u' := vect_proxy u in x.
 
 (** An additional possibility is to set "asymmetric patterns",
     so that the above wildcards are removed from patterns. *)
 
 Set Asymmetric Patterns.
 Definition hd_asym {A n} (u : vect A (S n)) : A :=
-  match invproxy u : vect_S A n with
+  match vect_proxy u with
   | cons_S x u' => x
   end.
 
 Definition hd_cons_asym {A n} (u : vect A (S n)) : A :=
-  let 'cons_S x u' := invproxy u in x.
+  let 'cons_S x u' := vect_proxy u in x.
 
 (** Back to the default option of Rocq. *)
 Unset Asymmetric Patterns.
+
+(* ---------------------------------------------------------------------- *)
+(** ** Defining map2 *)
+
+(** We now define our favorite example: map2.  It is similar to map
+    but, instead of a unary function, it applies a BINARY function
+    to the elements of TWO vectors indexed by the SAME length. *)
+
+Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
+  vect B n -> vect C n :=
+  match u with
+  | nil _         => fun v => nil C
+  | cons _ n x u' => fun v =>
+      let (y, v') := vect_proxy v in
+      cons _ _ (f x y) (map2 f u' v')
+  end.
 
 (* ---------------------------------------------------------------------- *)
 (** ** Formal proofs about dependently typed programs *)
 
 (** For the tail, we pick one of the above methods. *)
 Definition tl {A n} (u : vect A (S n)) : vect A n :=
-  let (x, u') := (invproxy u : vect_S A n) in u'.
+  let (x, u') := vect_proxy u in u'.
 
 (** However, sinv is not strong enough for *reasoning* about
     dependently typed programs such as hd and tl. *)
@@ -368,6 +400,7 @@ Unset Elimination Schemes (* For comfort *).
 Derive Dependent InvProxy for vect.
 Set Elimination Schemes (* For comfort *).
 
+(** The tactic to be used is "sdinv" instead of "sinv". *)
 Lemma make_hd_tl {A n} (u : vect A (S n)) : u = cons A n (hd u) (tl u).
 Proof.
   sdinv u as [x u']. cbn. reflexivity.
@@ -394,78 +427,54 @@ Print vect_S_dep.
 
 Print vect_proxy.
 Print vect_dproxy.
+Print vect_dproxy_type.
 
-(** Here are more readable handcrafted definitions for those proxies,
-    reusing the partial algebraic types automatically defined
-    by our "Derive InvProxy" command. *)
+(** The above defnitions can be beautified. *)
 
-Definition vect_proxy_type A n : Type :=
+Definition my_vect_proxy_type A n : Type :=
   match n with
   | O   => vect_O A
   | S n => vect_S A n
   end.
 
-Definition my_vect_proxy {A n} (u : vect A n) : vect_proxy_type A n :=
+Definition my_vect_proxy {A n} (u : vect A n) : my_vect_proxy_type A n :=
   match u with
   | nil _         => nil_O A
   | cons _ n x u' => cons_S A n x u'
   end.
 
-Definition vect_dproxy_type A n : vect A n -> Type :=
+Definition my_vect_dproxy_type A n : vect A n -> Type :=
   match n with
   | O   => vect_O_dep A
   | S n => vect_S_dep A n
   end.
 
-Definition my_vect_dproxy {A n} (u : vect A n) : vect_dproxy_type A n u :=
+Definition my_vect_dproxy {A n} (u : vect A n) : my_vect_dproxy_type A n u :=
   match u with
   | nil _         => nil_O_dep A
   | cons _ n x u' => cons_S_dep A n x u'
   end.
 
-(** An advantage of handcrafted proxies is that a deconstructing let raises
-    no issue coming from Rocq classes *)
-
-Definition hd_my {A n} (u : vect A (S n)) : A :=
-  let (x, u') := my_vect_proxy u in x.
-
-(* ---------------------------------------------------------------------- *)
-(** ** Defining map2 *)
-
-(** We now define our favorite example: map2.  It is similar to map
-    but, instead of a unary function, it applies a BINARY function
-    to the elements of TWO vectors indexed by the SAME length. *)
-
-Fixpoint map2 {A B C} (f : A -> B -> C) {n} (u : vect A n) :
-  vect B n -> vect C n :=
-  match u with
-  | nil _         => fun v => nil C
-  | cons _ n x u' => fun v =>
-      let (y, v') := my_vect_proxy v in
-      cons _ _ (f x y) (map2 f u' v')
-  end.
-
 (* ================================================================== *)
 (** * Chapter 3: simple tuning of PBSI *)
 
-(**
-   Vectors have only one index, for their length.  Given a vector u to
-   be analyzed by pattern matching, its index is in general an expression
-   of type nat.  If this expression is a variable, CIC pattern matching
-   is designed for this situation, just use it without making things any
-   more complicated.  This is exactly the case for the first argument
-   in the map2 function above.
-   Indeed, trying to use PBSI in this situation does not make sense,
-   because the type of (my_vect_proxy u), that is,
-   vect_proxy_type A n, does not reduce further than
-   match n with  0 => vect_O A  |  S n => vect_S A n  end.
-   Then you don't know if you should a pattern for vect_O or for vect_S.
-   This is rather clear if you write directly your program.
-   If you are in interactive mode, either because you are designing your
-   program, or because your target is not a program, but a proof,
-   you may try our tactic sinv.  This will result in a typical error
-   message "Not an inductive definition", as in the following scenario,
-   followed by a small number of additional explanatory commands.
+(** Vectors have only one index, for their length.  Given a vector u to
+    be analyzed by pattern matching, its index is in general an expression
+    of type nat.  If this expression is a variable, CIC pattern matching
+    is designed for this situation, just use it without making things any
+    more complicated.  This is exactly the case for the first argument
+    in the map2 function above.
+    Indeed, trying to use PBSI in this situation does not make sense,
+    because the type of (my_vect_proxy u), that is,
+    vect_proxy_type A n, does not reduce further than
+    match n with  0 => vect_O A  |  S n => vect_S A n  end.
+    Then you don't know if you should a pattern for vect_O or for vect_S.
+    This is rather clear if you write directly your program.
+    If you are in interactive mode, either because you are designing your
+    program, or because your target is not a program, but a proof,
+    you may try our tactic sinv.  This will result in a typical error
+    message "Not an inductive definition", as in the following scenario,
+    followed by a small number of additional explanatory commands.
  *)
 
 #[refine]
@@ -473,39 +482,40 @@ Fixpoint map2_stupid {A B C} (f : A -> B -> C) {n} (u : vect A n) :
   vect B n -> vect C n := _.
 Fail sinv u. (* the promised error message *)
 Fail destruct (invproxy u). (* The effect of "sinv u" *)
-(* Its type is as follows, using the syntax of classes:
-   vect_proxy has 2 arguments, then take the invproxy_type field. *)
-Check invproxy u : (vect_proxy A n).(invproxy_type).
-Compute (vect_proxy A n).(invproxy_type). (* Hence the error message *)
+(** Similarly to what was shon on even, invproxy u is convertible with vect_proxy u. *)
+Check eq_refl : invproxy u = vect_proxy u.
+(** Here is its type *)
+Check vect_proxy u : vect_proxy_type A n.
+(** However, this type is not converitble to an inductive type. *)
+Compute vect_proxy_type A n.
+(** Hence the error message *)
 Abort.
 
-(**
-   In other words, you don't have relevant information on n to be used
-   by PBSI.
+(** In other words, you don't have relevant information on n to be used
+    by PBSI.
 
-   Now, if the index of u is "constructed", that is, if it O or (S n)
-   for some n -- or if it is convertible to one ot those two shapes --
-   the type of (invproxy u) will reduce to vect_O or to vect_S n,
-   respectively (with an implicit parameter, say A)
-   and in either case, it can be properly decomposed.
+    Now, if the index of u is "constructed", that is, if it O or (S n)
+    for some n -- or if it is convertible to one ot those two shapes --
+    the type of (invproxy u) will reduce to vect_O or to vect_S n,
+    respectively (with an implicit parameter, say A)
+    and in either case, it can be properly decomposed.
 
-   In summary, the relevant pattern matching expression to be used is
-   match u with..., if the index of u if a variable, and
-   match invproxy u with ..., if the index of u is constructed.
+    In summary, the relevant pattern matching expression to be used is
+    match u with..., if the index of u if a variable, and
+    match vect_proxy u with ..., if the index of u is constructed.
 *)
 
 (* ---------------------------------------------------------------------- *)
 (** ** Selecting an index *)
 
-(**
-   For types or relations with 2 indices, the same binary question should be
-   asked for each index, so that we have 4 possibilities, that is
-   3 possibilities for a proxy, that could expect:
-   - 2 constructed indices
-   - or 1 constructed index only (2 possibilities)
-   In theory, all possibilities can make sense. In practice, we derive
-   the desired proxy only for the needed situation.
-   Let us illustrate this on the following binary relation nextcolor.
+(** For types or relations with 2 indices, the same binary question should be
+    asked for each index, so that we have 4 possibilities, that is
+    3 possibilities for a proxy, that could expect:
+    - 2 constructed indices
+    - or 1 constructed index only (2 possibilities)
+    In theory, all possibilities can make sense. In practice, we derive
+    the desired proxy only for the needed situation.
+    Let us illustrate this on the following binary relation nextcolor.
 *)
 
 Inductive color := Red | Orange | Green.
@@ -576,8 +586,8 @@ Qed.
 
 (** The general command "Derive InvProxy for T" specialises the
 algebraic type over all *useful* indices -- technically: all indices
-that take the form of a constructor in the conclusion of the
-constructors of T.
+that take the form of a constructor in the conclusion of at least
+one of the constructors of T.
 *)
 
 (* ---------------------------------------------------------------------- *)
@@ -656,7 +666,7 @@ Proof.
   reflexivity.
 Qed.
 
-
+End Chapters_2_3.
 
 (* ================================================================== *)
 (** * Chapter 4: making your development independent from our plugin  *)
@@ -666,41 +676,17 @@ Qed.
 
 Basically, you only have to copy and paste the useful Rocq code
 generated by each "Derive InvProxy for T", taking care of the class
-mechanism.  The "useful Rocq code" corresponds to the objects whose
+mechanism if you need it (mainly for tactics sinv and sdinv).
+The "useful Rocq code" corresponds to the objects whose
 names are displayed by a "Derive InvProxy for T" when you use
-"Unset Elimination Schemes":
-
-the names of the partial algebraic types and then the name of the
-proxy, typically "T_proxy".  First, display the code of each generated
-partial algebraic type using "Print" and copy-paste the result in your
-source file without change.  Next, display the code of the proxy using
-"Print T_proxy.", resulting in something like
-
-  T_proxy =
-     fun ... =>
-     {|
-        proxy_type := bbb...;
-        invproxy := ccc...
-     |}
-         : forall (ddd...), InvProxy (T aaa...)
-
-In the last line, the parentheses around "ddd..." may be missing if
-there is only one variable.  Then by copy-paste and small adjustments,
-make it an instance of the class "InvProxy" along the following
-scheme:
-
-Instance T_proxy (ddd...) : InvProxy (T aaa...) :=
-  {|
-     proxy_type := bbb...;
-     invproxy := ccc...
-  |}.
+"Unset Elimination Schemes", which are:
+- the names of the partial algebraic types
+- the name of the proxy and of its type, typically "T_proxy" and  "T_proxy_type".
+- the name of the corresponding instance registered in the
+  invproxy class.
 
  *)
 
-
-(** In this demo we use a module only to avoid name clashes
-    with previous definitions in this file. *)
-Module ExampleIndependent.
 
 (** ** Example *)
 
@@ -708,126 +694,118 @@ Module ExampleIndependent.
 the command "Derive InvProxy for vect." displayed:
 vect_O is defined
 vect_S is defined
+vect_proxy_type is defined
 vect_proxy is defined
+vect_instance is defined
 
-Then type:
-*)
+Then get their contents.
+The last one is only useful if you want to use the
+class mechanism for tactics in scripts.
+ *)
+
+Inductive vect (A : Type) : nat -> Type :=
+| nil : vect A O
+| cons : forall n, A -> vect A n -> vect A (S n).
+
+Unset Elimination Schemes (* For comfort *).
+Derive InvProxy for vect.
+Set Elimination Schemes (* For comfort *).
+
 Print vect_O.
 Print vect_S.
+Print vect_proxy_type.
+Print vect_proxy.
+Print vect_instance.
 
 (** You get:
 
 Inductive vect_O (A : Type) : Type :=  nil_O : vect_O A.
 Inductive vect_S (A : Type) (n : nat) : Type :=
     cons_S : A -> vect A n -> vect_S A n.
+
+vect_proxy_type =
+fun (A : Type) (nat0 : nat) =>
+match nat0 with
+| 0 => vect_O A
+| S x => vect_S A x
+end
+     : Type -> nat -> Type
+
+vect_proxy =
+fun (A : Type) (nat2 : nat) (vect_r : vect A nat2) =>
+match vect_r in (vect _ nat3) return (vect_proxy_type A nat3) with
+| nil _ => nil_O A
+| cons _ n x x0 => cons_S A n x x0
+end
+     : forall (A : Type) (nat2 : nat), vect A nat2 -> vect_proxy_type A nat2
+
+vect_instance =
+fun (A : Type) (nat2 : nat) =>
+{| invproxy_type := vect_proxy_type A nat2; invproxy := vect_proxy A nat2 |}
+     : forall (A : Type) (nat2 : nat), InvProxy (vect A nat2)
+
  *)
 
-(** You just copy them in your source file.
+(** In this demo we use a module only to avoid name clashes
+    with previous definitions in this file. *)
+Module ExampleIndependent.
+
+(** You just copy the partial algebraic types in your source file.
     You can replace "Inductive" by "Variant". *)
 Variant vect_O (A : Type) : Type :=  nil_O : vect_O A.
 Variant vect_S (A : Type) (n : nat) : Type :=
     cons_S : A -> vect A n -> vect_S A n.
 
-(** Then you need the proxy. *)
+(** The proxy type and the proxy need obvious adjustments. *)
 
-Print vect_proxy.
+Definition vect_proxy_type (A : Type) (nat0 : nat) :=
+  match nat0 with
+  | 0 => vect_O A
+  | S x => vect_S A x
+  end.
 
-(** You get:
+Definition vect_proxy (A : Type) (nat2 : nat) (vect_r : vect A nat2) :=
+  match vect_r in (vect _ nat3) return (vect_proxy_type A nat3) with
+  | nil _ => nil_O A
+  | cons _ n x x0 => cons_S A n x x0
+  end.
 
-vect_proxy =
-fun (_A : Type) (_nat2 : nat) =>
-{|
-  invproxy_type := match _nat2 with
-                   | 0 => vect_O _A
-                   | S x => vect_S _A x
-                   end;
-  invproxy :=
-    fun _vect_r : vect _A _nat2 =>
-    match
-      _vect_r in (vect _ _nat3)
-      return match _nat3 with
-             | 0 => vect_O _A
-             | S x => vect_S _A x
-             end
-    with
-    | nil _ => nil_O _A
-    | cons _ n x x0 => cons_S _A n x x0
-    end
-|}
-     : forall (_A : Type) (_nat2 : nat), InvProxy (vect _A _nat2)
-
-
-If you want to reuse what you wrote in your file without modification,
-in particular if you use "sinv",
-you need to add the above piece of code to the Type Class invproxy.
-To this effect, you slighly change if as follows:
- *)
-
-Instance vect_proxy (_A : Type) (_nat2 : nat) : InvProxy (vect _A _nat2) :=
-{|
-  invproxy_type := match _nat2 with
-                   | 0 => vect_O _A
-                   | S x => vect_S _A x
-                   end;
-  invproxy :=
-    fun _vect_r : vect _A _nat2 =>
-    match
-      _vect_r in (vect _ _nat3)
-      return match _nat3 with
-             | 0 => vect_O _A
-             | S x => vect_S _A x
-             end
-    with
-    | nil _ => nil_O _A
-    | cons _ n x x0 => cons_S _A n x x0
-    end
-|}.
-
-(** It works as expected. *)
-Definition hd {A n} (u : vect A (S n)) : A :=
-  let 'cons_S _ _ x u' := invproxy u in x.
-
-(** Detailed algorithm:
-
-- on the first line,
-  + add `Instance` at the beginning;
-  + after `T_proxy`, insert the text of the last line after the `forall`,
-  that is, `(ddd...) : InvProxy (T aaa...)`;
-  the comma just before `InvProxy` is replaced by a colon;
-  + end the line by "`:=`" instead of "`=`";
-- remove the second line;
-- add a period after `|}` in the penultimate line;
-- remove the last line.
-
- *)
-
-(** If you prefer a nicer presentation, you can observe that the
-    return clause of the field "invproxy" is based on "invproxy_type".
-    Then as suggested in Chapter 2, you can define separately
-    vect_proxy_type and vect_proxy. *)
-
+(** You may want to beautity those definitions, for instance the last one *) 
 Reset vect_proxy.
-
-Definition vect_proxy_type A n : Type :=
-  match n with
-  | O   => vect_O A
-  | S n => vect_S A n
+Definition vect_proxy A n (v : vect A n) :=
+  match v in (vect _ nat3) return (vect_proxy_type A nat3) with
+  | nil _ => nil_O A
+  | cons _ n x v' => cons_S A n x v'
   end.
 
-Definition vect_proxy {A n} (u : vect A n) : vect_proxy_type A n :=
-  match u with
-  | nil _         => nil_O A
-  | cons _ n x u' => cons_S A n x u'
+(** You can also make the type of the result more readable *)
+Reset vect_proxy.
+Definition vect_proxy A n (v : vect A n) : vect_proxy_type A n :=
+  match v with
+  | nil _ => nil_O A
+  | cons _ n x v' => cons_S A n x v'
   end.
 
-Instance inst_vect_proxy (A : Type) (n : nat) : InvProxy (vect A n) :=
-{|
-  invproxy_type := vect_proxy_type A n;
-  invproxy := fun u => vect_proxy u
-|}.
+(** Finally, if you want to reuse what you wrote in your file without
+    modification, in particular if you use "sinv" or "invproxy", 
+    vect_instance needs to be declared as in instance
+    of the class InvProxy.
+    The type of the result is given at the end of the last line
+    displayed above when printing vect_instance: InvProxy (vect A nat2) *)
+Instance vect_instance (A : Type) (nat2 : nat) : InvProxy (vect A nat2) :=
+  {| invproxy_type := vect_proxy_type A nat2; invproxy := vect_proxy A nat2 |}.
+
+(** It is generally convenient have implicit arguments in vect_proxy. *)
+Arguments vect_proxy {_ _} _.
 
 (** It works as expected. *)
-Definition hd {A n} (u : vect A (S n)) : A :=
+Definition hd_let {A n} (u : vect A (S n)) : A :=
+  let (x, u') := vect_proxy u in x.
+
+Definition hd_let_cons {A n} (u : vect A (S n)) : A :=
+  let 'cons_S _ _ x u' := vect_proxy u in x.
+
+Definition hd_class {A n} (u : vect A (S n)) : A :=
   let 'cons_S _ _ x u' := invproxy u in x.
 
 End ExampleIndependent.
@@ -843,12 +821,11 @@ and add the file "./SmallInversion/typeclass.v" in your project.
 (* ================================================================== *)
 (** * Chapter 5: on the relevance of parameters *)
 
-(**
-The point to be detailed now is about distinguishing parameters and
+(** The point to be detailed now is about distinguishing parameters and
 indices.  Although this may seems a boring technical distinction,
 it is behind one of the important design choices of PBSI, and it also
-explains why PBSI may behave better than other approaches, as illustrated
-in Chapter 6.
+explains why PBSI sometimes yields better results than other approaches,
+as illustrated in Chapter 6.
 
 This chapter can be skipped if you are in a hurry or if you are
 already familiar with parameters and indices.
@@ -878,7 +855,7 @@ about allowed expressions for N in the definition of even or even_S_S.
 - in contrast, as the argument of even_S_S is a parameter named n, there
   is only one possibility for N: it must be n itself.
 
-Indexes are then more convenient at construction time.
+Indices are then more convenient at construction time.
 But it is the opposite at destruction time.
 To see this, consider the following alternative to even_S_S,
 where an index is used instead of a parameter.
@@ -892,8 +869,7 @@ Variant even_S_S' : nat -> Prop :=
 Lemma even_S_S'_equiv n : even_S_S n <-> even_S_S' n.
 Proof. split; intro e; constructor; destruct e; assumption. Qed.
 
-(**
-The point is that the meaning is not the same.
+(** The point is that the meaning is not the same.
 If we have an assumption (E: even_S_S EXP)
 and a similar assuption (E' : even_S_S' EXP')
 an analysis (by pattern matching) of the contents of
@@ -904,9 +880,9 @@ in the above definition of (even_S_S n), n is instantiated to EXP;
 then E must have the shape (even2_S_S e) where the type of e is
 (even EXP).
 
-The simplest information contained if E' can be expressed as:
+The information contained if E' can be roughly expressed as:
 let us forget the argument of even_S_S in the type of E'; then E' must
-have the shape (even2_S_S' n' e') where n' is a fresh nat, and the type
+have the shape (even2_S_S' n' e'), where n' is a fresh nat and the type
 of e' is (even n').
 
 The actual information contained if E' can me made more accurate,
@@ -933,9 +909,7 @@ Proof.
        This is left as a simple exercise. *)
 Abort.
 
-(**
-
-In general, forward reasoning is more natural.
+(** Forward reasoning is often more natural.
 Indeed, it is also possible to use forward reasoning successfully
 on the hypothesis E' in the above proof.
 The general trick consists in adding a suitable additional
@@ -978,15 +952,14 @@ Proof.
    destruct (my_even_proxy E') as [ef'n]. apply H'. exact ef'n.
 Qed.
 
-(**
-Another issue with even_S_S' is that its additional component n
+(** Another issue with even_S_S' is that its additional component n
 conveys a data in Set (or Type).  This may raise issues with
 the guard condition and Prop/Set elimination.
 
 We do not go into details here, but just give a taste of
 what is to come in Chapter 6 below.
 
-Consider a correct-byconstruction half function that is
+Consider a correct-by-construction half function that is
 expected to work on even numbers only.
 It can be defined using my_even_proxy.
 *)
@@ -1027,12 +1000,11 @@ Fixpoint half' n : even n -> {y | twice y = n} :=
 Fail refine (let (n', e') := my_even_proxy' e in _).
 Abort.
 
-(**
-   We could then try a weaker version with a result of sort Prop
-   rather than Set.  We then see that the recursive call is not on n,
-   but on the fresh n' provided by even_S_S', with two additional issues:
-   - the guard condition would then be violated
-   - the remaining proof obligation is about n instead of n'.
+(** We could then try a weaker version with a result of sort Prop
+    rather than Set.  We then see that the recursive call is not on n,
+    but on the fresh n' provided by even_S_S', with two additional issues:
+    - the guard condition would then be violated
+    - the remaining proof obligation is about n instead of n'.
  *)
 
 #[refine]
@@ -1058,8 +1030,8 @@ Abort.
 (* ================================================================== *)
 (** * Chapter 6: more advanced example(s) *)
 
-(** Now we consider a more interesting relation than the above nextcolor:
-    the semantics of well-typed expressions.
+(** In this chapter we consider a more interesting relation than the above
+    nextcolor: the semantics of well-typed expressions.
     We use the source language provided in a seminal paper by Mc Carthy
     and Painter, 1967. *)
 
@@ -1099,13 +1071,15 @@ Derive InvProxy for well_typed with index 0.
 (** Making some arguments implicit for later usage *)
 Arguments WTCst_Cst {_ _}.
 Arguments WTPlus_Plus {_ _}.
+Arguments well_typed_Plus {_ _} _.
+Arguments well_typed_proxy {_ _} _.
 Set Elimination Schemes (* For comfort *).
 
 (** A semantics of well-typed expressions can be defined by recursion
     on expressions, then small inversion on well-typing.
     Note that here, both the tactic inversion and dependent
     elimination of Equations fail (complicated workarounds are
-    possible, anyway PBSI behaves much better).
+    possible, but PBSI behaves much better).
     For convenience, we first write a draft version in interactive mode,
     in order to highlight the effect of inversions.
     But it would be bad practice to consider this version as the definitive
@@ -1138,62 +1112,34 @@ Defined.
 End Script.
 
 (** Note that defining a function that can be used later in the statement
-    of theorems is BAD PRACTICE, because the very meaning of such theorems
+    of theorems is BAD PRACTICE, because the meaning of such theorems
     comes from the very body of the program that defines the function.
-    In this case, semE can be used to state the correctness of a compiler.
-    But the above definition uses tactics, whereas the tactic languqge
+    In this case, semE could be used to state the correctness of a compiler.
+    But the above definition uses tactics, whereas the tactic language
     is NOT in the TCB of Rocq and does not have a properly defined semantic.
     Fortunately PBSI can be used directly.
     First, we can use "invproxy w" with additional information. *)
 
-(** Advanced usage of PBSI, using classes *)
+
+
+Unset Elimination Schemes (* For comfort *).
+Derive Dependent InvProxy for well_typed with index 0.
+(** Making some arguments implicit for later usage *)
+Arguments well_typed_dproxy {_ _} _.
+Set Elimination Schemes (* For comfort *).
+
+(** Advanced usage of PBSI *)
 Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
   match e with
   | Cst t' v => fun w =>
-      let 'WTCst_Cst in well_typed_Cst _ _ t := invproxy w return value t
-      in v
+      let 'WTCst_Cst := well_typed_proxy w in v
   | Plus e1 e2 => fun w =>
-      let 'WTPlus_Plus w1 w2 in well_typed_Plus _ _ t := invproxy w return value t
+      let 'WTPlus_Plus w1 w2 in well_typed_Plus t := well_typed_proxy w return value t
       in semE e1 w1 + semE e2 w2
   | Ifte eb e1 e2 => fun w =>
-      let (wb, w1, w2) := invproxy w : well_typed_Ifte eb e1 e2 t
+      let (wb, w1, w2) := well_typed_proxy w
       in if semE eb wb then semE e1 w1 else semE e2 w2
   end.
-
-(** We can also define our own proxy function, so that the code
-    is even more explicit *)
-
-Module MyProxy.
-
-Definition well_typed_dispatch e : ty -> Prop :=
-  match e with
-  | Cst t v => well_typed_Cst t v
-  | Plus e1 e2 => well_typed_Plus e1 e2
-  | Ifte eb e1 e2 => well_typed_Ifte eb e1 e2
-  end.
-
-Definition well_typed_sinv {e t} (w : well_typed e t) : well_typed_dispatch e t :=
-  match w with
-  | WTCst t w => WTCst_Cst
-  | WTPlus e1 e2 w1 w2 => WTPlus_Plus w1 w2
-  | WTIfte eb e1 e2 t wb w1 w2 => WTIfte_Ifte eb e1 e2 t wb w1 w2
-  end.
-
-Fixpoint semE {t} (e : exp) : well_typed e t -> value t :=
-  match e with
-  | Cst t' v => fun w =>
-      let 'WTCst_Cst in well_typed_Cst _ _ t := well_typed_sinv w return value t
-      in v
-  | Plus e1 e2 => fun w =>
-      let 'WTPlus_Plus w1 w2 in well_typed_Plus _ _ t := well_typed_sinv w return value t
-      in semE e1 w1 + semE e2 w2
-  | Ifte eb e1 e2 => fun w =>
-      let (wb, w1, w2) := well_typed_sinv w : well_typed_Ifte eb e1 e2 t
-      in if semE eb wb then semE e1 w1 else semE e2 w2
-  end.
-
-End MyProxy.
-
 
 (* ================================================================== *)
 (** * Chapter 7: advanced tuning of PBSI *)
@@ -1210,50 +1156,61 @@ Inductive le2 : nat -> nat -> Prop :=
 
 Definition FAKE := Prop.
 
+Unset Elimination Schemes.
+Derive InvProxy for le2.
+Set Elimination Schemes.
+
 (** By default, the Derive InvProxy command build proxies for the
     situations where the two indices are constructed.
     However this is not relevant in the Lemma le2_n_1_small below,
     where, as in nextcolor3, only the second index is constructed.
     Additionally, the shape of the second index is very specific.
-    *)
+ *)
+
 
 Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
 Proof.
   intro l.
-(*  Fail sinv l.
-Abort. *)
+  Fail sinv l (*the default proxy is not relevant here *).
+Abort.
 
-(* Let us restart just before the definition of FAKE.
-Reset FAKE. *)
+(* Let us restart just before the definition of FAKE.*)
+Reset FAKE.
 
 (** We actually need an accurate proxy, that can be obtained using
     the algebraic type inversion_pattern that specifies a relevant pattern
     of indices. *)
-Print pilotInversion.
+Print inversion_pattern.
 
-(* It is used after the keywords "with pattern x" in the command
-   "Derive InvProxy", where x is a closed term of type inversion_pattern.
+(* This is the type of the argument to be put after the keywords "with pattern"
+   in the command "Derive InvProxy".
    The term (pilotInversion n l) indicates that we ask for an inversion on index
    number n, where l is a list that recursively specifies the kind of pattern matching
    to be performed deeper for this index. Note that the length of list must be exactly
    the nummber of partial algebraic types, and that the index position must take
    parameters into account.
    In our example, the desired proxy is generated by the following command.
+   We indicate below how to get this command without effort.
  *)
 Unset Elimination Schemes.
 Derive InvProxy for le2
   with pattern(pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
 Set Elimination Schemes.
+
+(** Now, sinv will work. *)
+Lemma le2_n_1_small n : le2 n 1 -> n = 0 \/ n = 1.
+Proof.
+  intro l.
   sinv l as [ | n l'].
   - left; reflexivity.
   - right; sinv l'; reflexivity.
 Qed.
 
-(* As finding the correct pattern can be tricky, we also provide the command
-   "Create_sinv_call y" that, for a given algebraically typed term y, prints
-   an invocation to "Derive InvProxy" with a suitable pattern for this y.
-   It can only be used in interactive proof mode.
-   Let us restart just before the definition of FAKE. *)
+(** As finding the correct pattern is not straightforward, we also provide the
+    command "Create_sinv_call y" that, for a given algebraically typed term y,
+    prints an invocation to "Derive InvProxy" with a suitable pattern for this y.
+    It can only be used in interactive proof mode.
+    Let us restart just before the definition of FAKE. *)
 
 Reset FAKE.
 
@@ -1263,6 +1220,7 @@ Proof.
   Create_sinv_call l.
   (* We get :
 Derive InvProxy for le2 with pattern (pilotInversion 1 [noInversion; pilotInversion 1 [noInversion; noInversion]]).
+  We just copy and paste it.
    *)
 
 Unset Elimination Schemes.

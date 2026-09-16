@@ -18,11 +18,13 @@ Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)).
 
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for vect.
+Arguments vect_proxy {_ _} _.
 Derive Dependent InvProxy for vect.
+Arguments vect_dproxy {_ _} _.
 Set Elimination Schemes (* For comfort *).
 
 (* Using the explicit instance is sometimes useful *)
-Definition sdinv_vect {A n} (v : vect A n) := (vect_dproxy _ _).(dinvproxy) v.
+(*Definition sdinv_vect {A n} (v : vect A n) := (vect_dproxy _ _).(dinvproxy) v.*)
 
 (* Destructuring let for dependent proxies of vectors *)
 Notation "'let_nil' '()' := E 'in' F" :=  (let 'nil_O_dep _ := E in F)  (at level 200).
@@ -36,16 +38,16 @@ Fixpoint map2 {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   vect B n → vect C n :=
   match u with
   | []     => λ v, []
-  | x :: u => λ v, let '(cons_S _ _ y v) := invproxy v in f x y :: map2 f u v
+  | x :: u => λ v, let '(cons_S _ _ y v) := vect_proxy v in f x y :: map2 f u v
   end.
 
-(*For non-dependent inversion, the notation "let (y,v) := ... v in" is also possible*)
+(* For non-dependent inversion, the notation "let (y,v) := ... v in" is also possible *)
 
 Fixpoint map2' {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   vect B n → vect C n :=
   match u with
   | []     => λ v, []
-  | x :: u => λ v, let (y,v) := invproxy v : vect_S _ _ in f x y :: map2' f u v
+  | x :: u => λ v, let (y, v) := vect_proxy v in f x y :: map2' f u v
   end.
 
 (* A map2 function on vectors that remembers its inputs in its type *)
@@ -58,14 +60,14 @@ Arguments Remap2 C {A B n} _ _.
 Fixpoint remap2 {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   ∀ v : vect B n, Remap2 C u v :=
   match u with
-  | []     => λ v, let 'nil_O_dep _        := sdinv_vect v in Rmnil
-  | x :: u => λ v, let 'cons_S_dep _ _ y v := sdinv_vect v in Rmcons (f x y) (remap2 f u v)
+  | []     => λ v, let 'nil_O_dep _        := vect_dproxy v in Rmnil
+  | x :: u => λ v, let 'cons_S_dep _ _ y v := vect_dproxy v in Rmcons (f x y) (remap2 f u v)
   end.
 
 (* With nicer notations *)
 Fixpoint remap2' {A B C : Type} (f : A → B → C) {n} (u : vect A n) :
   ∀ v : vect B n, Remap2 C u v :=
   match u with
-  | []     => λ v, let_nil  ()     := sdinv_vect v in Rmnil
-  | x :: u => λ v, let_cons (y, v) := sdinv_vect v in Rmcons (f x y) (remap2' f u v)
+  | []     => λ v, let_nil  ()     := vect_dproxy v in Rmnil
+  | x :: u => λ v, let_cons (y, v) := vect_dproxy v in Rmcons (f x y) (remap2' f u v)
   end.
