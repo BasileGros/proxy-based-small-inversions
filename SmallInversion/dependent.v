@@ -4,6 +4,7 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
+From SmallInversion Require Import data_structures.
 
 (*Add the reflexive index in the conclusion of the constructor.
  Number of parameters is not zero because we are before deparameterisation.*)
@@ -20,7 +21,7 @@ Definition dependent_constructor
   (*Add it to the constructor's type telescope*)
   let new_type := add_to_concl_telescope cons.(cstr_type) [call_const] in
   (*Regenerate the list of instanciated indices*)
-  let new_indices := telescope_to_indices new_type nb_params in
+  let new_indices := extract_instanciated_indices new_type nb_params in
   {|
     cstr_name := cons.(cstr_name);
     cstr_args := cons.(cstr_args);
@@ -46,7 +47,7 @@ Definition dependent_oib  (poib : pseudo_oib)(term_og_inductive : term)
       poib.(pseudo_type) (length poib.(pseudo_indices) + nb_params) tprod_reflexive_index
   in
   let new_indices :=
-    telescope_to_args new_type nb_params (length poib.(pseudo_indices) + 1)
+    telescope_to_context new_type nb_params (length poib.(pseudo_indices) + 1)
   in
   {|
     pseudo_name := poib.(pseudo_name);

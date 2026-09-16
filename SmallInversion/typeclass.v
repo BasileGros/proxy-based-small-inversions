@@ -5,7 +5,7 @@ Class InvProxy  (T:Type) := {  invproxy_type:     Type;  invproxy:     T -> invp
 Class dInvProxy (T:Type) := { dinvproxy_type: T -> Type; dinvproxy: forall t:T, dinvproxy_type t }.
 
 
-(** ** Algebraic variant *)
+(** ** Tactics *)
 Tactic Notation "sinv" constr(p) :=
   (destruct (invproxy p)).
 Tactic Notation "sinv" constr(p) "as" simple_intropattern(pat) :=

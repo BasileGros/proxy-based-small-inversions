@@ -4,9 +4,10 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
+From SmallInversion Require Import data_structures.
 From SmallInversion Require Import dependent.
 From SmallInversion Require Import derecursivation.
-
+(*From SmallInversion Require Import universalisation.*)
 (*Extracts from the coq object to invert all information necessary for the inversion.*)
 Definition data_extraction_error
   (prefix : string) (env_R : global_env) (term_R:term)
@@ -23,10 +24,10 @@ Definition data_extraction_error
   match lookup_mind_decl (modpath_R,ident_R) env_R.(declarations) with
   |None => Error "Anomaly : mib of relation not found in the environment"
   |Some mib_R =>
-     (*TODO if necessary, change the universe levels in the AST to fresh ones*)
-     let univ_mib_R := (*universalisation_mib*) mib_R in
+     (*Remove all universe levels to have them be recalculated when unquoting.*)
+     (*let universalised_mib := universalisation_mib mib_R in*)
      (*Get the AST of the inductive type from the AST of the mutually inductive type*)
-     oib_R <-? one_inductive_body_from_mib univ_mib_R index_R;;
+     oib_R <-? one_inductive_body_from_mib mib_R index_R;;
      (*A letin telescope of the different inductive types in the mutually inductive type, for derecursivation.*)
      let telescope_oib_R :=
        create_telescope_letin_mutual_inductive
@@ -59,7 +60,7 @@ Definition data_extraction_error
          term_transfo := term_R;
          index_oib := index_R;
          prefix := prefix;
-         pmib := pseudo_mib_of_mib univ_mib_R;
+         pmib := pseudo_mib_of_mib mib_R;
          poib := poib;
          lctors := lctors;
          og_poib := og_poib;
@@ -73,7 +74,7 @@ Definition data_extraction_error
        |} in
      (*Derecursivation*)
      let derec_transfo_info :=
-       derecursivation_mib transfo_info telescope_oib_R (length univ_mib_R.(ind_bodies))
+       derecursivation_mib transfo_info telescope_oib_R (length mib_R.(ind_bodies))
      in
      Success (derec_transfo_info)
   end.
@@ -87,7 +88,7 @@ Definition data_extraction{X}
   modpath_call <-- tmCurrentModPath tt;;
   tmErrorReturn (data_extraction_error prefix env_R term_R modpath_call isdep).
 
-(*Wraps the printing of the data necessary for the inversion in MetaCoq's TemplateMonad*)
+(*Wraps the printing of the data necessary for the inversion in MetaCoq's TemplateMonad for debug purpose*)
 Definition print_data_extraction{X}
   (R:X) (prefix : string)(isdep : bool)
   : TemplateMonad unit :=

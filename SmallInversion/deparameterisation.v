@@ -4,6 +4,7 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
+From SmallInversion Require Import data_structures.
 
 From SmallInversion Require Import strategy_engine.
 From SmallInversion Require Import proxy_identity.
@@ -12,8 +13,8 @@ From SmallInversion Require Import proxy_identity.
  The type telescope doesn't need to change.*)
 Definition deparameterisation_constructor (transfo_info : transformation_info) (cons : constructor_body): constructor_body :=
   let new_arity := cons.(cstr_arity) + (pmib transfo_info).(pseudo_npars) in
-  let new_indices := telescope_to_indices cons.(cstr_type) 0 in
-   let new_args := telescope_to_args cons.(cstr_type) 0 new_arity in
+  let new_indices := extract_instanciated_indices cons.(cstr_type) 0 in
+   let new_args := telescope_to_context cons.(cstr_type) 0 new_arity in
   {|
     cstr_name := cons.(cstr_name);
     cstr_args := new_args;
@@ -26,7 +27,7 @@ Definition deparameterisation_constructor (transfo_info : transformation_info) (
 Definition deparameterisation_oib  (transfo_info : transformation_info) : pseudo_oib :=
   let poib := poib transfo_info in
   let new_indices :=
-    telescope_to_args
+    telescope_to_context
       (poib.(pseudo_type)) 0
       ((length poib.(pseudo_indices)) + (pmib transfo_info).(pseudo_npars))
   in

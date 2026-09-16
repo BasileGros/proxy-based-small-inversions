@@ -164,7 +164,7 @@ Fixpoint name_context (p:context) (n:nat) : context :=
           
           {|
             decl_name :=
-              {| binder_name := nNamed ("_"^string_d^(string_of_nat n));
+              {| binder_name := nNamed (string_d^(string_of_nat n));
                 binder_relevance := d.(decl_name).(binder_relevance) |};
             decl_body := d.(decl_body);
             decl_type := d.(decl_type) |}
@@ -175,7 +175,7 @@ Fixpoint name_context (p:context) (n:nat) : context :=
         let new_d :=
           {|
             decl_name :=
-              {| binder_name := nNamed ("_"^nam);
+              {| binder_name := nNamed (nam);
                 binder_relevance := d.(decl_name).(binder_relevance) |};
             decl_body := d.(decl_body);
             decl_type := d.(decl_type)
@@ -213,6 +213,6 @@ Definition create_context_constructor
   (name_disp : string)(cons : constructor_body)
   : context_decl :=
   
-  let new_type := var_inductive cons.(cstr_type) (tVar ("_"^name_disp)) in
-  let new_decl := vass (string_to_aname ("_"^ cons.(cstr_name))) new_type in
+  let new_type := var_inductive cons.(cstr_type) (tVar (name_disp)) in
+  let new_decl := vass (string_to_aname (cons.(cstr_name))) new_type in
   new_decl.

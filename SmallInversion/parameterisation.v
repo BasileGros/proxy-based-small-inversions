@@ -11,6 +11,7 @@ Import MRMonadNotation.
 From utils Require Import utils.
 From SmallInversion Require Import strategy_engine.
 From SmallInversion Require Import proxy_identity.
+From SmallInversion Require Import data_structures.
 
 (** * Finding Indices that can be parameterised
  i.e. finding indices that are variables in the conclusions of all the constructors
@@ -157,7 +158,7 @@ Definition parameterise_index_constructor (position_index:nat)(nb_params:nat)(co
      let modified_telescope_type := parameterise_index pos_arg nb_params const.(cstr_type) in
 
      (*Get the indices in the conclusion of the constructor*)
-     let concl_type := telescope_to_indices modified_telescope_type 0 in
+     let concl_type := extract_instanciated_indices modified_telescope_type 0 in
      (*Remove the parameterised index*)
      let (concl_without_index, opt_var_index) := remove_and_return_index_from_list concl_type (position_index + nb_params) in
      match opt_var_index with
@@ -169,8 +170,8 @@ Definition parameterise_index_constructor (position_index:nat)(nb_params:nat)(co
 
         (*Compute the new values of the other fields of the constructor.*)
         let new_arity := const.(cstr_arity) - 1 in
-        let new_args := telescope_to_args new_type (nb_params + 1) new_arity in
-        let new_indices := telescope_to_indices new_type (nb_params + 1) in
+        let new_args := telescope_to_context new_type (nb_params + 1) new_arity in
+        let new_indices := extract_instanciated_indices new_type (nb_params + 1) in
         let new_name := const.(cstr_name) in
         Success ({|
             cstr_name := new_name;
@@ -227,7 +228,7 @@ Fixpoint parameterise_all_possible_indices
         in
         let list_cons_args := concat_options olist_cons_args in
         let new_indices :=
-          telescope_to_args new_type (nb_params + 1) (length poib.(pseudo_indices) - 1)
+          telescope_to_context new_type (nb_params + 1) (length poib.(pseudo_indices) - 1)
         in
         
         parameterise_all_possible_indices (
@@ -276,7 +277,7 @@ Definition parameterise_inductive_error (transfo_info : transformation_info)
       pseudo_relevance := poib.(pseudo_relevance)
     |} in
   
-  let new_params := telescope_to_args param_oib.(pseudo_type) 0 new_npars in
+  let new_params := telescope_to_context param_oib.(pseudo_type) 0 new_npars in
   Success
     ({|
         pseudo_finite := (pmib transfo_info).(pseudo_finite);
@@ -402,7 +403,7 @@ Definition proxy_constructor_reparam
   in
   
   let context_constructor :=
-    [vass  (string_to_aname ("_"^constructor_repar.(cstr_name)^"_reparam")) type_call_constr]
+    [vass  (string_to_aname (constructor_repar.(cstr_name)^"_reparam")) type_call_constr]
   in
   
   (*Name the contexts of the inductive for the future variable uses. *)
@@ -413,7 +414,7 @@ Definition proxy_constructor_reparam
   |Some calls_new_params =>
      (*Creates the telescope by successively adding the different elements and transforming the variabel references into De Bruijn indexes.*)
      let call_constructor :=
-       tApp (tVar ("_" ^ constructor_repar.(cstr_name)^"_reparam")) ( (calls_old_params) ++ (calls_new_params) ++ calls_new_args)
+       tApp (tVar (constructor_repar.(cstr_name)^"_reparam")) ( (calls_old_params) ++ (calls_new_params) ++ calls_new_args)
      in
      let proxy_without_cons := append_context_vars_lambda glob ctx_old_params_args call_constructor in
      let proxy := append_context_vars_lambda glob (context_constructor ++ [decl_disp]) proxy_without_cons in
@@ -433,7 +434,7 @@ Definition proxy_type_reparam
 
   (*let l := mapi (fun i l => tApp (tVar (string_of_nat i)) (map (fun n => tVar (string_of_nat n)) l)) lists_args_reparam in*)
   
-  let name_type := "_"^(poib_repar).(pseudo_name)^"_reparam" in
+  let name_type := (poib_repar).(pseudo_name)^"_reparam" in
   let decl_type :=
     vass
       (string_to_aname name_type)
@@ -475,7 +476,7 @@ Definition proxy_type_reparam
        get_vertical_slices lists_args_reparam (length concat_lctors)
      in
      
-     let name_disp := "_"^(poib transfo_info).(pseudo_name)^"_reparam" in
+     let name_disp := (poib transfo_info).(pseudo_name)^"_reparam" in
      let decl_disp :=
        vass
          (string_to_aname name_disp)

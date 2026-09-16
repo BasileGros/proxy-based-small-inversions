@@ -5,8 +5,10 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
+From SmallInversion Require Import data_structures.
 
-(** Partial derecursivation : does not change the final call to the inductive in each constructor. *)
+(** Partial derecursivation : does not change the final call to the inductive in each constructor.
+ Also remves all let in constructs via zeta reduction*)
 
 Definition derecursivation_constructor
   (transfo_info : transformation_info) (telescope_oib : term -> term)
@@ -27,8 +29,8 @@ Definition derecursivation_constructor
   in
 
   (*Inference of the new list arguments and indices from the changed type telescope.*)
-  let new_args := telescope_to_args new_type (pmib transfo_info).(pseudo_npars) cons.(cstr_arity) in
-  let new_indices := telescope_to_indices new_type (pmib transfo_info).(pseudo_npars) in
+  let new_args := telescope_to_context new_type (pmib transfo_info).(pseudo_npars) cons.(cstr_arity) in
+  let new_indices := extract_instanciated_indices new_type (pmib transfo_info).(pseudo_npars) in
 
   {|
     cstr_name := cons.(cstr_name);
@@ -43,13 +45,13 @@ Definition derecursivation_oib
   : pseudo_oib :=
   let poib := poib transfo_info in
 
-  (*Zeta-reduction *)
+  (*Zeta-reduction*)
   let new_type :=
     remove_let_in (telescope_oib poib.(pseudo_type)) []
   in
   (*Inference of the new indices and their types.*)
   let new_indices :=
-    telescope_to_args new_type (pmib transfo_info).(pseudo_npars) (length poib.(pseudo_indices))
+    telescope_to_context new_type (pmib transfo_info).(pseudo_npars) (length poib.(pseudo_indices))
   in
   {|
     pseudo_name := poib.(pseudo_name);
@@ -77,7 +79,8 @@ Definition derecursivation_mib
 
 
 (** Full  derecursivation, also changes the final call to the inductive.
-A list of instranciated values of the parameters can also be given to be propagated.*)
+A list of instranciated values of the parameters can also be given to be propagated.
+ Used on the pilot inductive type*)
 
 
 Definition full_derecursivation_constructor
@@ -100,14 +103,16 @@ Definition full_derecursivation_constructor
     remove_let_in added_type []
   in
 
-  (*Removes the parameters and generate the new argument list.*)
+  (*Removes the parameters and generate the new argument and indices lists.*)
   let new_args :=
-    telescope_to_args
+    telescope_to_context
       new_type
       ((pmib transfo_info).(pseudo_npars)- length instanciated_parameter_list)
       (cons.(cstr_arity))
   in
-  let new_indices := telescope_to_indices new_type ((pmib transfo_info).(pseudo_npars)- length instanciated_parameter_list) in
+  let new_indices :=
+    extract_instanciated_indices new_type ((pmib transfo_info).(pseudo_npars)- length instanciated_parameter_list)
+  in
 
   {|
     cstr_name := cons.(cstr_name);
@@ -132,7 +137,7 @@ Definition full_derecursivation_oib
     remove_let_in added_type []
   in
   
-  let new_indices := telescope_to_args new_type ((pmib transfo_info).(pseudo_npars) - length instanciated_parameter_list) (length poib.(pseudo_indices)) in
+  let new_indices := telescope_to_context new_type ((pmib transfo_info).(pseudo_npars) - length instanciated_parameter_list) (length poib.(pseudo_indices)) in
   
   {|
     pseudo_name := poib.(pseudo_name);
@@ -193,12 +198,12 @@ Definition full_derecursivation_constructor'
 
   (*Removes the parameters and generate the new argument list.*)
   let new_args :=
-    telescope_to_args
+    telescope_to_context
       new_type
       0
       (cons.(cstr_arity))
   in
-  let new_indices := telescope_to_indices new_type 0 in
+  let new_indices := extract_instanciated_indices new_type 0 in
 
   {|
     cstr_name := cons.(cstr_name);

@@ -1,11 +1,7 @@
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
-From utils Require Import term_functions.
-From utils Require Import list_functions.
-From utils Require Import error_monad.
-From utils Require Import TM_functions.
-From utils Require Import term_printer.
+From utils Require Import utils.
 
 
 (*Modified records of the inductive types that are not nested constructor_body ∈ one_inductive_body ∈ mutual_inductive_body*)

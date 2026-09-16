@@ -2,6 +2,7 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 
+From SmallInversion Require Import data_structures.
 From SmallInversion Require Import derecursivation.
 From SmallInversion Require Import deparameterisation.
 From SmallInversion Require Import dependent.

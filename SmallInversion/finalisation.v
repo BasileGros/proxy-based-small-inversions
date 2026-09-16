@@ -3,6 +3,7 @@ From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
 From SmallInversion Require Import strategy_engine.
+From SmallInversion Require Import data_structures.
 
 Definition finalize_constructor
   (transfo_info: transformation_info) (index_constructor : nat) (c : constructor_body)
