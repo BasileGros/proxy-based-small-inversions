@@ -45,26 +45,20 @@ Module ExpLang.
   | numval : Z -> Val Int.
 
   Inductive All{A} (P : A -> Set) : list A -> Type :=
-  | allnil : All P nil
-  | allcons : forall x xs,  P x -> All P xs -> All P (cons x xs).
+  | allnil : All P []
+  | allcons : forall x xs,  P x -> All P xs -> All P (x :: xs).
 
   Definition Env (Γ : Ctx) := All Val Γ.
 
-
-  Definition a (x:Z) (l:list Z) : InvProxy (in_list x l) := _.
-
-  Fixpoint lookup {A P xs}{x:A}(HA : All P xs) (Hin : x ∈ xs) : P x :=
-    match HA  with
-    | allnil _ => λ Hin' : x ∈ [], match invproxy Hin' in in_list_nil _ _ return (P x) with end
-    | allcons _ hd tl p a =>
-        fun (Hin' : in_list x (hd :: tl)) =>
-          match in_list_proxy Hin' with
-          | here_cons _ _ _ => (fun (p' : P x) (_ : All P tl) (_ : in_list x (x :: tl)) => p')
-          | there_cons _ _ _ y i =>
-              (fun (_ : P y) (HA' : All P tl) (_ : in_list x (y :: tl)) =>
-                 lookup HA' i)
-          end p a Hin'
-    end Hin.
+  Fixpoint lookup {A P xs} {x:A} (HA : All P xs) : x ∈ xs → P x :=
+    match HA with
+    | allnil _            => λ Hin', match in_list_proxy Hin' with end
+    | allcons _ hd tl p a => λ Hin',
+        match in_list_proxy Hin' with
+        | here_cons _ _ _      => λ p' _, p'
+        | there_cons _ _ _ y i => λ _  a', lookup a' i
+        end p a
+    end.
 
   Unset Elimination Schemes.
   Derive InvProxy for Val.
@@ -145,70 +139,61 @@ Module STLC.
   Arguments Val_proxy {_} _.
   Set Elimination Schemes.
   
-  Fixpoint lookup {A P xs}{x:A}(HA : All P xs) (Hin : x ∈ xs) : P x :=
-    match HA  with
-    | allnil _ => λ Hin' : x ∈ [], match invproxy Hin' in in_list_nil _ _ return (P x) with end
-    | allcons _ hd tl p a =>
-        fun (Hin' : in_list x (hd :: tl)) =>
-          match in_list_proxy Hin' with
-          | here_cons _ _ _ => (fun (p' : P x) (_ : All P tl) (_ : in_list x (x :: tl)) => p')
-          | there_cons _ _ _ y i =>
-              (fun (_ : P y) (HA' : All P tl) (_ : in_list x (y :: tl)) =>
-                 lookup HA' i)
-          end p a Hin'
-    end Hin.
-
+  Fixpoint lookup {A P xs} {x:A} (HA : All P xs) : x ∈ xs → P x :=
+    match HA with
+    | allnil _            => λ Hin', match in_list_proxy Hin' with end
+    | allcons _ hd tl p a => λ Hin',
+        match in_list_proxy Hin' with
+        | here_cons _ _ _      => λ p' _, p'
+        | there_cons _ _ _ y i => λ _  a', lookup a' i
+        end p a
+    end.
   
   Definition M (Γ : Ctx) (A:Type) : Type :=
     (Env Γ -> option A).
 
-  Definition bind{Γ A B} (f: M Γ A)(c : A -> M Γ B) : M Γ B :=
-    fun E => match f E with
-          | Some x => c x E
-          | None => None
-          end.
+  Definition bind {Γ A B} (f: M Γ A)(c : A -> M Γ B) : M Γ B :=
+    λ E, match f E with
+         | Some x => c x E
+         | None => None
+         end.
 
   Notation "mA '>>=' f" := (bind mA f)(at level 0, right associativity).
 
-  Definition ret {Γ A} (x : A) : M Γ A := fun _ => Some x.
+  Definition ret {Γ A} (x : A) : M Γ A := λ _, Some x.
 
-  Definition getEnv {Γ} :  M Γ (Env Γ) := fun E => ret E E.
+  Definition getEnv {Γ} :  M Γ (Env Γ) := λ E, ret E E.
 
   Definition usingEnv {Γ Γ' A} (E : Env Γ) (f : M Γ A) : M Γ' A :=
     fun _ => f E.
 
-  Definition timeout {Γ A} : M Γ A := fun _ => None.
-
+  Definition timeout {Γ A} : M Γ A := λ _, None.
 
   Fixpoint eval (n:nat){Γ t} (exp : Expr Γ t) : M Γ (Val t) :=
-
     match n, exp with
     | O, _ => timeout
     | S k, unitexpr _ => ret unitval
     | S k, var _ x => getEnv >>= fun E => ret (lookup E x)
     | S k, lam _ e => getEnv >>= fun E => ret (closure e E)
     | S k, app _ l r =>
-       getEnv >>= fun E' => (eval k l) >>=
-                           fun v' =>
-                             match  Val_proxy v' with
-                             | closure_implies _ _ _ e E =>
-                                 (fun _ r0 _ => getEnv >>=
-                                               fun _ => (eval k r0) >>=
-                                                       fun v'' => usingEnv (allcons Val _ _ v'' E) (eval k e))
+       getEnv >>= λ E', (eval k l) >>=
+                          λ v', match Val_proxy v' with
+                                | closure_implies _ _ _ e E =>
+                                    λ _ r0 _, getEnv >>=
+                                             λ _ , (eval k r0) >>=
+                                                     λ v'', usingEnv (allcons Val _ _ v'' E) (eval k e)
                                    
-                             end l r v'
+                                end l r v'
     | S k , num _ x => ret (numval x)
     | S k, iop _ f l r =>
-       getEnv >>= fun E' => (eval k l) >>=
-                           fun v =>
-                             match Val_proxy v with
-                             | numval_int vl => getEnv >>=
-                                                 fun E' => (eval k r) >>=
-                                                          fun v' =>
-                                                            match Val_proxy v' with
-                                                            | numval_int vr => ret (numval (f vl vr))
-                                                            end
-                             end
+       getEnv >>= λ E', (eval k l) >>=
+                          λ v, match Val_proxy v with
+                               | numval_int vl => getEnv >>=
+                                                    λ E', (eval k r) >>=
+                                                            λ v', match Val_proxy v' with
+                                                                  | numval_int vr => ret (numval (f vl vr))
+                                                                  end
+                               end
     end.
 
   Definition idexpr : Expr nil (unit ==> unit) := (lam _ ( var _ (here unit))).

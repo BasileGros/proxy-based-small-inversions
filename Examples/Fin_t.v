@@ -48,7 +48,10 @@ From SmallInversion Require Import small_inversion.
 (* For λ notation *)
 From Stdlib Require Import Utf8.
 
+Unset Elimination Schemes (* For comfort *).
 Derive Dependent InvProxy for Fin.t.
+Arguments t_dproxy {_} _.
+Set Elimination Schemes (* For comfort *).
 
 (* Interactive definition *)
 Definition Fin_3_rect_autoscript
@@ -65,27 +68,27 @@ Proof.
 Defined.
 Print Fin_3_rect_autoscript.
 
-Fail Definition Fin_3_rect_autosmall
+Definition Fin_3_rect_autosmall'
   (P : Fin.t 3 -> Type)
   (p1 : P F1)
   (p2 :  P (FS F1))
   (p3 : P (FS (FS F1))) 
   (x : Fin.t 3) : P x :=
-  let d := dinvproxy x in
+  let d := t_dproxy x in
   match d in (t_S_dep _ t) return (P t) with
   | F1_S_dep _ => p1
   | FS_S_dep _ t0 =>
       (λ x2 : t 2,
-         let d0 := dinvproxy x2 in
+         let d0 := t_dproxy x2 in
          match d0 in (t_S_dep _ t) return (P (FS t)) with
          | F1_S_dep _ => p2
          | FS_S_dep _ t1 =>
              (λ x1 : t 1,
-                let d1 := dinvproxy x1 in
+                let d1 := t_dproxy x1 in
                 match d1 in (t_S_dep _ t) return (P (FS (FS t))) with
                 | F1_S_dep _ => p3
                 | FS_S_dep _ t2 =>
-                    (λ x0 : t 0, let d2 := dinvproxy x0 in match d2 return (P (FS (FS (FS x0)))) with
+                    (λ x0 : t 0, let d2 := t_dproxy x0 in match d2 return (P (FS (FS (FS x0)))) with
                                                            end) t2
                 end)
                t1
@@ -93,22 +96,22 @@ Fail Definition Fin_3_rect_autosmall
         t0
   end.
 
-(* After obvious simplication, renaming and repair of a slight oversight *)
+(* After obvious simplication and renaming *)
 Definition Fin_3_rect_autosmall
   (P : Fin.t 3 -> Type)
   (p1 : P F1)
   (p2 :  P (FS F1))
   (p3 : P (FS (FS F1))) 
   (x : Fin.t 3) : P x :=
-  match dinvproxy x in t_S_dep _ t return (P t) with
+  match t_dproxy x in t_S_dep _ t return (P t) with
   | F1_S_dep _ => p1
   | FS_S_dep _ x2 =>
-      match dinvproxy x2 in t_S_dep _ t return (P (FS t)) with
+      match t_dproxy x2 in t_S_dep _ t return (P (FS t)) with
       | F1_S_dep _ => p2
       | FS_S_dep _ x1 => 
-          match dinvproxy x1 in t_S_dep _ t return (P (FS (FS t))) with
+          match t_dproxy x1 in t_S_dep _ t return (P (FS (FS t))) with
           | F1_S_dep _ => p3
-          | FS_S_dep _ x0 => match dinvproxy x0 in t_O_dep _ with end
+          | FS_S_dep _ x0 => match t_dproxy x0 in t_O_dep _ with end
           end
       end
   end.

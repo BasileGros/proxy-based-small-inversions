@@ -23,9 +23,6 @@ Derive Dependent InvProxy for vect.
 Arguments vect_dproxy {_ _} _.
 Set Elimination Schemes (* For comfort *).
 
-(* Using the explicit instance is sometimes useful *)
-(*Definition sdinv_vect {A n} (v : vect A n) := (vect_dproxy _ _).(dinvproxy) v.*)
-
 (* Destructuring let for dependent proxies of vectors *)
 Notation "'let_nil' '()' := E 'in' F" :=  (let 'nil_O_dep _ := E in F)  (at level 200).
 Notation "'let_cons' ( A ,  B ) := E 'in' F" :=

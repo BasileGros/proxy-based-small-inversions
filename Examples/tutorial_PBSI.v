@@ -45,20 +45,11 @@ PBSI work in two steps:
 
   - Programming constructs (where PAT means partial algebraic type)
     match YourType_proxy expr with
+    match YourType_proxy expr in PAT... x return ... x ... with
+
     let ( , ... ) := YourType_proxy expr in
     let 'ConstructorPAT... := YourType_proxy expr in
     let 'ConstructorPAT... in PAT... x return ... x ... := YourType_proxy expr in
-
-  - Programming constructs (OBSOLETE, TODO to be removed)
-    match invproxy expr with
-    let (... ) := (invproxy expr : ExpectedPartialAlgebraicType) in
-    let (... ) := (YourType _ _).(invproxy) expr in
-    let 'YourConsructor ... := invproxy expr in
-
-    match (YourType _ _).(invproxy) expr with
-
-    match my_YourType_proxy expr with
-    let (... ) := my_YourType_proxy expr in
 
 *)
 
@@ -482,7 +473,7 @@ Fixpoint map2_stupid {A B C} (f : A -> B -> C) {n} (u : vect A n) :
   vect B n -> vect C n := _.
 Fail sinv u. (* the promised error message *)
 Fail destruct (invproxy u). (* The effect of "sinv u" *)
-(** Similarly to what was shon on even, invproxy u is convertible with vect_proxy u. *)
+(** Similarly to what was shown on even, invproxy u is convertible with vect_proxy u. *)
 Check eq_refl : invproxy u = vect_proxy u.
 (** Here is its type *)
 Check vect_proxy u : vect_proxy_type A n.
@@ -1118,9 +1109,7 @@ End Script.
     But the above definition uses tactics, whereas the tactic language
     is NOT in the TCB of Rocq and does not have a properly defined semantic.
     Fortunately PBSI can be used directly.
-    First, we can use "invproxy w" with additional information. *)
-
-
+    Note that here, we use "let" with a return clause. *)
 
 Unset Elimination Schemes (* For comfort *).
 Derive Dependent InvProxy for well_typed with index 0.

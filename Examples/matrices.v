@@ -17,10 +17,13 @@ Inductive bn : nat → Set :=
 | BS : ∀ {n}, bn n → bn (S n).
 
 
+Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for bn.
 (* bn_O bn_S *)
+Arguments bn_proxy {_} _.
 Derive Dependent InvProxy for bn.
 (* bn_O_dep bn_S_dep *)
+Set Elimination Schemes (* For comfort *).
 
 
 (* cons with n as first index is more convenient *)
@@ -29,9 +32,9 @@ Inductive vect (A : Type) : nat -> Type :=
 | cons : ∀ n, A → vect A n → vect A (S n).
 
 Unset Elimination Schemes (* For comfort *).
-
 Derive InvProxy for vect.
 (* vect_O vect_S *)
+Arguments vect_proxy {_ _} _.
 Derive Dependent InvProxy for vect.
 (* vect_O_dep vect_S_dep *)
 Set Elimination Schemes.
@@ -44,9 +47,6 @@ Notation "x :: v" := (cons x v).
 Notation "[ x ]" := (cons x nil).
 Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)).
 
-(* For convenience *)
-Notation proxy_vectS u := (invproxy u : vect_S _ _).
-
 (* ====================================================================== *)
 (* Functional implementation of vectors *)
 
@@ -55,8 +55,8 @@ Definition fvect (A : Type) : nat -> Type := λ n, bn n → A.
 (* From vectors to functional vectors... *)
 Fixpoint ith {A n} (u : vect A n) : fvect A n :=
   match u with
-  | []      => λ i, match invproxy i : bn_O with end
-  | x :: u' => λ i, match invproxy i with
+  | []      => λ i, match bn_proxy i with end
+  | x :: u' => λ i, match bn_proxy i with
                     | BO_S _    => x
                     | BS_S _ i' => ith u' i'
                     end
@@ -124,7 +124,7 @@ Definition map2 {A B C} (f : A → B → C) :
     match u with
     | []      => λ v, []
     | x :: u' => λ v,
-        let (y, v') := proxy_vectS v in
+        let (y, v') := vect_proxy v in
         f x y :: loop _ u' v'
     end.
 
