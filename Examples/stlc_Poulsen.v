@@ -6,9 +6,33 @@
 From Stdlib Require Import Utf8.
 From SmallInversion Require Import small_inversion.
 (* From Stdlib Require Import ZArith.*)  (* optional *) 
-From Stdlib Require Import Fin.
 
+Inductive in_list {A} (x:A) : list A -> Type :=
+| here {l} : in_list x (cons x l)
+| there {y l} : in_list x l -> in_list x (cons y l).
 
+Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
+
+Unset Elimination Schemes.
+Derive InvProxy for in_list.
+Arguments here_cons {_ _ _}.
+Arguments there_cons {_ _ _} _ _.
+Arguments in_list_proxy {_ _ _} _.
+Set Elimination Schemes.
+
+Inductive All {A} (P : A -> Type) : list A -> Type :=
+| allnil : All P []
+| allcons : forall x xs,  P x -> All P xs -> All P (x :: xs).
+
+Fixpoint lookup {A P xs} {x:A} (HA : All P xs) : x ∈ xs → P x :=
+  match HA with
+  | allnil _            => λ Hin', match in_list_proxy Hin' with end
+  | allcons _ hd tl p a => λ Hin',
+      match in_list_proxy Hin' with
+      | here_cons      => λ p' _, p'
+      | there_cons y i => λ _  a', lookup a' i
+      end p a
+  end.
 
 Module ExpLang.
   (* A small intrinsically-typed interpreter for an expression
@@ -21,18 +45,6 @@ Module ExpLang.
 
   Definition Ctx := list Ty.
 
-
-  Inductive in_list {A} (x:A) : list A -> Type :=
-  | here {l} : in_list x (cons x l)
-  | there {y l} : in_list x l -> in_list x (cons y l).
-
-  Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
-
-  Unset Elimination Schemes.
-  Derive InvProxy for in_list.
-  Arguments in_list_proxy {_ _ _} _.
-  Set Elimination Schemes.
-
   Inductive Expr (Γ : Ctx) : Ty -> Type :=
   | boolexpr : bool -> Expr Γ Bool
   | num : Z -> Expr Γ Int
@@ -44,21 +56,7 @@ Module ExpLang.
   | boolval : bool -> Val Bool
   | numval : Z -> Val Int.
 
-  Inductive All{A} (P : A -> Set) : list A -> Type :=
-  | allnil : All P []
-  | allcons : forall x xs,  P x -> All P xs -> All P (x :: xs).
-
   Definition Env (Γ : Ctx) := All Val Γ.
-
-  Fixpoint lookup {A P xs} {x:A} (HA : All P xs) : x ∈ xs → P x :=
-    match HA with
-    | allnil _            => λ Hin', match in_list_proxy Hin' with end
-    | allcons _ hd tl p a => λ Hin',
-        match in_list_proxy Hin' with
-        | here_cons _ _ _      => λ p' _, p'
-        | there_cons _ _ _ y i => λ _  a', lookup a' i
-        end p a
-    end.
 
   Unset Elimination Schemes.
   Derive InvProxy for Val.
@@ -96,22 +94,9 @@ Module STLC.
   | implies : Ty -> Ty -> Ty
   | int : Ty.
 
-  Notation "t '==>' u" := (implies t u)(at level 0).
+  Notation "t '==>' u" := (implies t u) (at level 0).
 
   Definition Ctx := list Ty.
-
-
-  Inductive in_list{A}(x:A) : list A -> Type :=
-  | here {l} : in_list x (cons x l)
-  | there {y l} : in_list x l -> in_list x (cons y l).
-
-
-  Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
-
-  Unset Elimination Schemes.
-  Derive InvProxy for in_list.
-  Arguments in_list_proxy {_ _ _} _.
-  Set Elimination Schemes.
 
   Inductive Expr (Γ : Ctx) : Ty -> Type :=
   | unitexpr : Expr Γ unit
@@ -121,34 +106,19 @@ Module STLC.
   | num : Z -> Expr Γ int
   | iop : (Z -> Z -> Z) -> Expr Γ int -> Expr Γ int -> Expr Γ int.
 
-  Inductive All{A} (P : A -> Type) : list A -> Type :=
-  | allnil : All P nil
-  | allcons : forall x xs,  P x -> All P xs -> All P (cons x xs).
-
-
   Inductive Val : Ty -> Type :=
   | unitval : Val unit
   | numval : Z -> Val int
-  | closure {Γ t u} :
-    Expr (t :: Γ) u -> All Val Γ -> Val (t ==> u).
+  | closure {Γ t u} : Expr (t :: Γ) u -> All Val Γ -> Val (t ==> u).
 
   Notation "'Env' Γ" := (All Val Γ)(at level 0).
 
   Unset Elimination Schemes.
   Derive InvProxy for Val.
   Arguments Val_proxy {_} _.
+  Arguments closure_implies {_ _} _ _ _.
   Set Elimination Schemes.
-  
-  Fixpoint lookup {A P xs} {x:A} (HA : All P xs) : x ∈ xs → P x :=
-    match HA with
-    | allnil _            => λ Hin', match in_list_proxy Hin' with end
-    | allcons _ hd tl p a => λ Hin',
-        match in_list_proxy Hin' with
-        | here_cons _ _ _      => λ p' _, p'
-        | there_cons _ _ _ y i => λ _  a', lookup a' i
-        end p a
-    end.
-  
+   
   Definition M (Γ : Ctx) (A:Type) : Type :=
     (Env Γ -> option A).
 
@@ -173,27 +143,22 @@ Module STLC.
     match n, exp with
     | O, _ => timeout
     | S k, unitexpr _ => ret unitval
-    | S k, var _ x => getEnv >>= fun E => ret (lookup E x)
-    | S k, lam _ e => getEnv >>= fun E => ret (closure e E)
+    | S k, var _ x => getEnv >>= λ E, ret (lookup E x)
+    | S k, lam _ e => getEnv >>= λ E, ret (closure e E)
     | S k, app _ l r =>
        getEnv >>= λ E', (eval k l) >>=
-                          λ v', match Val_proxy v' with
-                                | closure_implies _ _ _ e E =>
-                                    λ _ r0 _, getEnv >>=
-                                             λ _ , (eval k r0) >>=
-                                                     λ v'', usingEnv (allcons Val _ _ v'' E) (eval k e)
-                                   
-                                end l r v'
+                          λ v', (let 'closure_implies _ e E := Val_proxy v' in
+                                 λ _ r0 _, getEnv >>=
+                                           λ _ , (eval k r0) >>=
+                                                 λ v'', usingEnv (allcons Val _ _ v'' E) (eval k e)
+                                ) l r v'
     | S k , num _ x => ret (numval x)
     | S k, iop _ f l r =>
        getEnv >>= λ E', (eval k l) >>=
-                          λ v, match Val_proxy v with
-                               | numval_int vl => getEnv >>=
-                                                    λ E', (eval k r) >>=
-                                                            λ v', match Val_proxy v' with
-                                                                  | numval_int vr => ret (numval (f vl vr))
-                                                                  end
-                               end
+                          λ v, let (vl) := Val_proxy v in
+                               getEnv >>= λ E', (eval k r) >>=
+                                                 λ v', let (vr) := Val_proxy v' in
+                                                       ret (numval (f vl vr))
     end.
 
   Definition idexpr : Expr nil (unit ==> unit) := (lam _ ( var _ (here unit))).
