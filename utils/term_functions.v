@@ -9,11 +9,11 @@ Notation nameAnon := {| binder_name := nAnon; binder_relevance := Relevant |}.
 
 (*Extracts the list of indices
 from the conclusion of a constructor's type telescope*)
-Fixpoint telescope_to_indices (t:term) (nb_params : nat) : list term :=
+Fixpoint extract_instanciated_indices (t:term) (nb_params : nat) : list term :=
   match t with
-  | tProd _ _ cont => telescope_to_indices cont nb_params
-  | tLambda _ _ cont => telescope_to_indices cont nb_params
-  | tLetIn _ _ _ cont  => telescope_to_indices cont nb_params
+  | tProd _ _ cont => extract_instanciated_indices cont nb_params
+  | tLambda _ _ cont => extract_instanciated_indices cont nb_params
+  | tLetIn _ _ _ cont  => extract_instanciated_indices cont nb_params
   | tApp _ l => without_firstn l nb_params
   | _ => []
   end.
@@ -70,7 +70,7 @@ Fixpoint cut_telescope (t:term) (n:nat) : (term -> term) * term :=
   | _, _ => (fun x => x, t)
   end.
 
-Fixpoint aux_telescope_to_args
+Fixpoint aux_telescope_to_context
   (telescope : term) (nb_args : nat) (acc : context)
   : context :=
 
@@ -80,15 +80,17 @@ Fixpoint aux_telescope_to_args
                                              decl_body := None;
                                              decl_type := type
                                            |} in
-                               aux_telescope_to_args cont m (decl::acc)
+                               aux_telescope_to_context cont m (decl::acc)
   |_ , _ => acc
   end.
 
-Definition telescope_to_args
+(*Converts part of a type telescope into a context (list of types terms).
+ Used to get an oib/poib's indices or a constructor_body's arguments from their respective telescope*)
+Definition telescope_to_context
   (telescope : term) (nb_params : nat) (nb_args : nat)
   : context :=
   let peeled_telescope := peel_telescope telescope nb_params in
-  aux_telescope_to_args peeled_telescope nb_args [].
+  aux_telescope_to_context peeled_telescope nb_args [].
 
 
 

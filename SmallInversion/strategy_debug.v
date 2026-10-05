@@ -3,6 +3,7 @@ From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
 From SmallInversion Require Import strategy_engine.
+From SmallInversion Require Import data_structures.
 
 
 Definition print_glob_def
@@ -13,7 +14,7 @@ Definition print_glob_def
   | DefInductive msg info mib => tmMsg ( msg ^ "
 " ^ pTransfo_info Σ [] info ^ "
 " ^ pMib Σ [] mib)
-  | DefConst nam ast => tmMsg (nam ^ " : " ^ pTerm Σ [] ast)
+  | DefConst nam ast => tmMsg "" (*nam ^ " : " ^ pTerm Σ [] ast*)
   end.
 
 Definition ugly_print_glob_def
@@ -22,12 +23,12 @@ Definition ugly_print_glob_def
   : TemplateMonad unit :=
   match g with
   | DefInductive msg info mib =>
-      _ <-- eval_print msg;;
-      _ <-- eval_print info;;
+      (*_ <-- eval_print msg;;
+      _ <-- eval_print info;;*)
       eval_print mib
   | DefConst nam ast =>
-      _ <-- eval_print nam;;
-      eval_print ast
+      (*_ <-- *)eval_print nam(*;;*)
+      (*eval_print ast*)
   end.
 
 Fixpoint print_list_glob_def

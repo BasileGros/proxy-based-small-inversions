@@ -2,6 +2,7 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 
+From SmallInversion Require Import data_structures.
 From SmallInversion Require Import derecursivation.
 From SmallInversion Require Import deparameterisation.
 From SmallInversion Require Import dependent.
@@ -111,6 +112,13 @@ Definition strategy_specialisation : strategy :=
        genchoices_specialisation
        (transfo_specialisation false)
        (fun _ => strategy_param)).
+
+Definition strategy_specialisation_no_param : strategy :=
+  strat_Cons no_debug transfo_deparameterisation
+    (iter_choices
+       genchoices_specialisation
+       (transfo_specialisation false)
+       (fun _ => strategy_identity)).
 
 Definition precise_strategy_specialisation (n:nat) : strategy :=
   strat_Cons no_debug (transfo_specialisation true n) (fun _ => strategy_param).

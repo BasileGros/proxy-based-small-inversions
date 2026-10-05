@@ -3,7 +3,8 @@ From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
 From SmallInversion Require Import proxy0.
-
+From SmallInversion Require Import data_structures.
+(*From SmallInversion Require Import universalisation.*)
 (*The closed lambda terms for the proxy_type and each branch of the the proxy function.
  The option (that is present throughout this code), is to keep the original relation's constructor positions and orders
  if some are removed from a partial inductive type.
@@ -22,8 +23,12 @@ Inductive Glob_def: Type :=
 (*Definition a Rocq object in the global environment.*)
 Definition define_glob_def  (g : Glob_def) : TemplateMonad unit :=
   match g with
-  | DefInductive msg information mib => tmMkInductive' mib
-  | DefConst nam ast => tmMkDefinition nam ast
+  | DefInductive msg information mib =>
+      (*let univ_mib := universalisation_mib mib in*)
+      tmMkInductive' mib
+  | DefConst nam ast =>
+      (*let univ_ast := universalisation_term ast in*)
+      tmMkDefinition nam ast
   end.
 
 (*Definition a list of Rocq object in the global environment.*)
@@ -97,12 +102,14 @@ Definition merge_diff (ldiff : list glob_diff) : glob_diff :=
 Definition merge_proxy (gdiff0:glob_diff)
   (lresults : list (result_proxy * glob_diff))
   (adapter_transfo : proxy_adapter)
+  (transfo_info : transformation_info)
   : result_proxy * glob_diff :=
   let (adapter_type, ladapter_cons) := adapter_transfo in
   let (lresults_to_adapt, ldiff) := split (lresults) in
   let alldiff:= fun l => merge_diff ldiff (gdiff0 l) in
   let (ldisp, lnew_cons) := split lresults_to_adapt in
   let new_proxy_type := tApp adapter_type ldisp in
+  
   let new_proxy_cons := mapi_list_options'' (merge_one_constructor lnew_cons new_proxy_type) ladapter_cons in
   ((new_proxy_type,new_proxy_cons), alldiff).
 
@@ -172,7 +179,7 @@ Definition later_debug_proxy
   
   let glob_def_adapter_cons :=
     mapi_list_options (fun i t =>
-                         DefConst ("_"^(string_of_nat fuel)^
+                         DefConst ((string_of_nat fuel)^
                                      "_adapter_proxy_cons_" ^
                                        (string_of_nat i )) t)
       lopt_proxy_cons
@@ -187,7 +194,7 @@ Definition later_debug_proxy
     fun l =>
       alldiff
         (lnew_diff_part ++
-           ((DefConst ("_"^(string_of_nat fuel)^"_adapter_proxy_type") proxy_type )::(glob_def_adapter_cons)) ++
+           ((DefConst ((string_of_nat fuel)^"_adapter_proxy_type") proxy_type )::(glob_def_adapter_cons)) ++
            (concat lglob_def_new_cons) ++
            l)
   in
@@ -241,7 +248,7 @@ Fixpoint execute_strategy
                 map_and_merge_results
                   (list_const (fun sub => execute_strategy (success sub) sub (S depth)) (length l_sub_proxies))
                   l_sub_proxies
-                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo))
+                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo transfo_info))
              |here_debug =>
                 debug_map_and_merge_results
                   (list_const (fun sub => execute_strategy (success sub) sub (S depth)) (length l_sub_proxies))
@@ -263,7 +270,7 @@ Fixpoint execute_strategy
                 map_and_merge_results
                   (map (fun success => (fun sub => execute_strategy (success sub) sub (S depth))) l_success)
                   l_sub_proxies
-                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo))
+                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo transfo_info))
              |here_debug =>
                 debug_map_and_merge_results
                   (map (fun success => (fun sub => execute_strategy (success sub) sub (S depth))) l_success)
@@ -298,7 +305,7 @@ Fixpoint debug_execute_strategy
                 map_and_merge_results
                   (list_const (fun sub => debug_execute_strategy (success sub) sub (S depth)) (length l_sub_proxies))
                   l_sub_proxies
-                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo))
+                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo transfo_info))
              |here_debug =>
                 debug_map_and_merge_results
                   (list_const (fun sub => debug_execute_strategy (success sub) sub (S depth)) (length l_sub_proxies))
@@ -319,7 +326,7 @@ Fixpoint debug_execute_strategy
                 map_and_merge_results
                   (map (fun success => (fun sub => debug_execute_strategy (success sub) sub (S depth))) l_success)
                   l_sub_proxies
-                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo))
+                  (fun l => Success (merge_proxy gdiff0 l adapter_transfo transfo_info))
              |here_debug =>
                 debug_map_and_merge_results
                   (map (fun success => (fun sub => debug_execute_strategy (success sub) sub (S depth))) l_success)
@@ -336,8 +343,9 @@ Fixpoint debug_execute_strategy
   end.
 Set Guard Checking.
 
+(*
 Definition finalize_proxy0 (proxy0:term) (r:Result) : ErrorMonad term :=
-  let '((proxy_type,lproxy_cons),deps) := r in
+  let '((proxy_type,lproxy_cons),_) := r in
   let concat_lcons := concat_options lproxy_cons in
   Success (tApp proxy0 (proxy_type::concat_lcons)).
 
@@ -351,7 +359,40 @@ Definition execute_strategy_err
   typeclass <-? finalize_proxy0 proxy__0 result_strat;;
   let (_,gdiff) := result_strat in
   Success (typeclass, gdiff []).
+*)
+Definition finalize_proxy0 (transfo_info : transformation_info) (instance0 : term) (proxy0:term) (r:Result) : ErrorMonad (term * term * term) :=
+  let '((proxy_type,lproxy_cons),_) := r in
+  let concat_lcons := concat_options lproxy_cons in
+  let name_proxy :=  if isdep transfo_info
+                     then
+                       (prefix transfo_info) ^ (poib transfo_info).(pseudo_name) ^ "_dproxy"
+                     else
+                       (prefix transfo_info) ^ (poib transfo_info).(pseudo_name) ^ "_proxy"
+  in
+  let name_proxy_type := if isdep transfo_info
+                     then
+                       (prefix transfo_info) ^ (poib transfo_info).(pseudo_name) ^ "_dproxy_type"
+                     else
+                       (prefix transfo_info) ^ (poib transfo_info).(pseudo_name) ^ "_proxy_type"
+  in
+  let instance :=
+    tApp instance0 [tConst (transfo_info.(modpath_call), name_proxy_type) []; tConst (transfo_info.(modpath_call), name_proxy) []]
+  in
+  let proxy := tApp proxy0 ((tConst (transfo_info.(modpath_call), name_proxy_type) [])::concat_lcons) in     
+  Success (instance, proxy, proxy_type).
 
+
+Definition execute_strategy_err
+  (strat : strategy)
+  (derec_transfo_info : transformation_info)
+  : ErrorMonad (term * term * term * list Glob_def) :=
+  result_strat <-? execute_strategy strat derec_transfo_info 0;;
+  '(instance0,proxy0) <-? create_proxy0 derec_transfo_info;;
+  '(instance, proxy, proxy_type) <-? finalize_proxy0 derec_transfo_info instance0 proxy0 result_strat;;
+  let (_,gdiff) := result_strat in
+  Success (instance, proxy, proxy_type, gdiff []).
+
+(*
 Definition debug_strategy_err  (
     strat : strategy)
   (derec_transfo_info : transformation_info)
@@ -361,3 +402,14 @@ Definition debug_strategy_err  (
   typeclass <-? finalize_proxy0 proxy__0 result_strat;;
   let (_,gdiff) := result_strat in
   Success (typeclass, gdiff []).
+ *)
+
+Definition debug_strategy_err  (
+    strat : strategy)
+  (derec_transfo_info : transformation_info)
+  : ErrorMonad (term * term * term * list Glob_def) :=
+  result_strat <-? debug_execute_strategy strat derec_transfo_info 0;;
+  '(instance0,proxy0) <-? create_proxy0 derec_transfo_info;;
+  '(instance, proxy, proxy_type) <-? finalize_proxy0 derec_transfo_info instance0 proxy0 result_strat;;
+  let (_,gdiff) := result_strat in
+  Success (instance, proxy, proxy_type, gdiff []).

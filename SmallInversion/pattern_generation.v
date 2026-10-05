@@ -7,6 +7,15 @@ From utils Require Import utils.
 
 Notation ind_eq := {| inductive_mind := (MPfile ["Logic"; "Init"; "Corelib"], "eq"); inductive_ind := 0 |}.
 
+
+(** Tree structure to internally represent specialisation subcalls*)
+Inductive tree (A:Type) :Type  :=
+| node: A -> list (tree A) -> tree A
+| leaf: tree A.
+
+Arguments node {A}.
+Arguments leaf {A}.
+
 Definition quotetype(X : Type) :=
   x <-- tmQuote X;;
   eval <-- tmEval all x;;
@@ -118,10 +127,10 @@ Definition get_pattern{X}(R:X)(is_eq : bool)  :=
   let call := "Derive InvProxy for " ^ ind_name ^ " with pattern (" ^ string_tree ^ ")." in
   tmMsg call.
 
-#[global] Tactic Notation "create_sinv_call" constr(x) := ltac:((let p := fun _ => idtac in
+#[global] Tactic Notation "Create_sinv_call" constr(x) := ltac:((let p := fun _ => idtac in
                              run_template_program (get_pattern x false) p)).
 
-#[global] Tactic Notation "create_sinv_call_eq" constr(x) := ltac:((let p := fun _ => idtac in
+#[global] Tactic Notation "Create_sinv_call_eq" constr(x) := ltac:((let p := fun _ => idtac in
                              run_template_program (get_pattern x true) p)).
 
 
@@ -135,5 +144,5 @@ Definition get_dependent_pattern{X}(R:X):=
   let call := "Derive Dependent InvProxy for " ^ ind_name ^ " with pattern (" ^ string_tree ^ ")." in
   tmMsg call.
 
-#[global] Tactic Notation "create_sdinv_call" constr(x) := ltac:((let p := fun _ => idtac in
+#[global] Tactic Notation "Create_sdinv_call" constr(x) := ltac:((let p := fun _ => idtac in
                              run_template_program (get_dependent_pattern x) p)).
