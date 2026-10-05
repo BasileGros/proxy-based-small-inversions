@@ -28,7 +28,9 @@ Inductive list_position {A} : list A -> Type :=
 (* Generation of the proxies for non-dependent and dependent inversion *)
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for list_position.
+Arguments list_position_proxy {_ _} _.
 Derive Dependent InvProxy for list_position.
+  Arguments list_position_dproxy {_ _} _.
 Set Elimination Schemes.
 
 Arguments HeadPosition_cons {_ _ _}.
@@ -42,7 +44,7 @@ Arguments TailPosition_cons_dep {_ _ _}.
 Lemma TailPosition_mono {A:Type} {l:list A} {x} {p1 p2 : list_position l} :
   TailPosition x _ p1 = TailPosition x _ p2 -> p1 = p2.
 Proof using Type.
-  intro h. apply (f_equal invproxy) in h. simpl in h. congruence.
+  intro h. apply (f_equal list_position_proxy) in h. simpl in h. congruence.
 Qed.
 
 (* ---------------------------------------------------------------------- *)
@@ -78,7 +80,7 @@ Fixpoint list_position_dec_prog {A} {l:list A} (p1 : list_position l) :
    match p1 with
     | HeadPosition x l    =>
         fun p2 =>
-          match dinvproxy p2 in list_position_cons_dep _ _ _ p
+          match list_position_dproxy p2 in list_position_cons_dep _ _ _ p
           return {HeadPosition x l = p} + {HeadPosition x l <> p}
           with
           | HeadPosition_cons_dep   => left _
@@ -86,7 +88,7 @@ Fixpoint list_position_dec_prog {A} {l:list A} (p1 : list_position l) :
           end
     | TailPosition x l p1 =>
         fun p2 =>
-          match dinvproxy p2 in list_position_cons_dep _ _ _ p
+          match list_position_dproxy p2 in list_position_cons_dep _ _ _ p
           return {TailPosition x l p1 = p} + {TailPosition x l p1 <> p}
           with
           | HeadPosition_cons_dep    => right _
@@ -120,12 +122,12 @@ Fixpoint list_position_bool {A} {l:list A} (p1 : list_position l) :
   forall (p2 : list_position l), bool :=
    match p1 with
     | HeadPosition x l    =>
-        fun p2 => match invproxy p2 with
+        fun p2 => match list_position_proxy p2 with
                   | HeadPosition_cons   => true
                   | TailPosition_cons p => false
                   end
     | TailPosition x l p1 =>
-        fun p2 => match invproxy p2 with
+        fun p2 => match list_position_proxy p2 with
                   | HeadPosition_cons    => false
                   | TailPosition_cons p2 => list_position_bool p1 p2
                   end

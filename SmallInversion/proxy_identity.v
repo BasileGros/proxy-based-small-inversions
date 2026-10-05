@@ -3,6 +3,7 @@ From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
 From utils Require Import utils.
+From SmallInversion Require Import data_structures.
 
 (*The proxy adapter for a given constructor.*)
 Definition proxy_adapter_identity
@@ -21,7 +22,7 @@ Definition proxy_adapter_identity
 
   (*The inner call to the new constructor*)
   let call_constructor :=
-    tApp (tVar ("_"^cstr.(cstr_name))) (calls_params ++ call_args)
+    tApp (tVar (cstr.(cstr_name))) (calls_params ++ call_args)
   in
 
   (*Appending the lambdas for arguments, parameters, constructor, and type *)
@@ -44,13 +45,13 @@ Definition proxy_type_adapter_identity (transfo_info : transformation_info)
   : term * list (option term) :=
   let poib := poib transfo_info in
   let name_disp := poib.(pseudo_name) in
-  let decl_disp := vass (string_to_aname ("_" ^ name_disp)) poib.(pseudo_type) in
+  let decl_disp := vass (string_to_aname ( name_disp)) poib.(pseudo_type) in
   (*The calls and context for the later dB and lambdas for the type, its parameters and indices.*)
   let named_indices := name_context poib.(pseudo_indices) 0 in
   let ctx_params_indices := named_indices ++ (pmib transfo_info).(pseudo_params) in
   let calls_params_indices := context_to_call ctx_params_indices in
   (*The inner call to the new type*)
-  let call_disp := tApp (tVar ("_" ^ name_disp)) calls_params_indices in
+  let call_disp := tApp (tVar (name_disp)) calls_params_indices in
   (*Appending the lambdas for arguments, parameters, constructor, and type *)
   let lambda_param_indices :=
     append_context_vars_lambda (env_quote transfo_info) ctx_params_indices call_disp
