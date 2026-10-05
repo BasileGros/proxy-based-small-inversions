@@ -14,7 +14,7 @@ end
 (** * Main entry point of the plugin. *)
 
 (*Small inversion on all possible indices.*)
-let derive_proxy (ind_ref : Libnames.qualid)(is_dep : bool): unit =
+let derive_proxy (ind_ref : Libnames.qualid)(is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -39,18 +39,19 @@ let derive_proxy (ind_ref : Libnames.qualid)(is_dep : bool): unit =
   (* Run the program using [MetaRocq Run ...]. Since [program] is not supposed
      to create new obligations, we discard the final obligation state. *)
   let _st =
-    Run_template_monad.run_template_program_rec
+    (Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
       env
-      (sigma, EConstr.to_constr sigma program)
+      (sigma, EConstr.to_constr sigma program))
   in
   ()
  
 (*Small inversion on all possible indices.*)
-let derive_proxy_prefix (ind_ref : Libnames.qualid) prefix (is_dep : bool): unit =
+let derive_proxy_prefix (ind_ref : Libnames.qualid) prefix (is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -76,6 +77,7 @@ let derive_proxy_prefix (ind_ref : Libnames.qualid) prefix (is_dep : bool): unit
      to create new obligations, we discard the final obligation state. *)
   let _st =
     Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
@@ -86,7 +88,7 @@ let derive_proxy_prefix (ind_ref : Libnames.qualid) prefix (is_dep : bool): unit
   ()
 
 (*Small inversion on one specific index.*)
-let derive_one_proxy (ind_ref : Libnames.qualid) n (is_dep : bool) : unit =
+let derive_one_proxy (ind_ref : Libnames.qualid) n (is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -112,6 +114,7 @@ let derive_one_proxy (ind_ref : Libnames.qualid) n (is_dep : bool) : unit =
      to create new obligations, we discard the final obligation state. *)
   let _st =
     Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
@@ -121,7 +124,7 @@ let derive_one_proxy (ind_ref : Libnames.qualid) n (is_dep : bool) : unit =
   in
   ()
 
-let derive_one_proxy_prefix (ind_ref : Libnames.qualid) n prefix (is_dep : bool) : unit =
+let derive_one_proxy_prefix (ind_ref : Libnames.qualid) n prefix (is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -147,6 +150,7 @@ let derive_one_proxy_prefix (ind_ref : Libnames.qualid) n prefix (is_dep : bool)
      to create new obligations, we discard the final obligation state. *)
   let _st =
     Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
@@ -157,7 +161,7 @@ let derive_one_proxy_prefix (ind_ref : Libnames.qualid) n prefix (is_dep : bool)
   ()
 
 (*Small inversion on one specific index.*)
-let derive_pattern_proxy (ind_ref : Libnames.qualid) patt (is_dep : bool) : unit =
+let derive_pattern_proxy (ind_ref : Libnames.qualid) patt (is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -183,6 +187,7 @@ let derive_pattern_proxy (ind_ref : Libnames.qualid) patt (is_dep : bool) : unit
      to create new obligations, we discard the final obligation state. *)
   let _st =
     Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
@@ -192,7 +197,7 @@ let derive_pattern_proxy (ind_ref : Libnames.qualid) patt (is_dep : bool) : unit
   in
   ()
 
-let derive_pattern_proxy_prefix (ind_ref : Libnames.qualid) patt prefix (is_dep : bool) : unit =
+let derive_pattern_proxy_prefix (ind_ref : Libnames.qualid) patt prefix (is_dep : bool) ~opaque_access : unit =
   (* Create the initial environment and evar map. *)
   let env = Global.env () in
   let sigma = Evd.from_env env in
@@ -218,6 +223,7 @@ let derive_pattern_proxy_prefix (ind_ref : Libnames.qualid) patt prefix (is_dep 
      to create new obligations, we discard the final obligation state. *)
   let _st =
     Run_template_monad.run_template_program_rec
+      opaque_access
       ~poly:false
       ~intactic:false
       (fun ~st _ _ _ -> st)
