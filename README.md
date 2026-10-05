@@ -1,6 +1,8 @@
-Proxy-based small inversions (PBSI) are an alternative to the `inversion` and `dependent elimination` tactics in Rocq,
+Proxy-based small inversions (PBSI) are initially designed as an alternative to the `inversion` tactic in Rocq,
 with the goal of obtaining small, easily explainable CIC terms.
-They are also useful for defining programs with dependent types and developing formal proofs about them.
+At the same time, PBSI offer an additional approach to pattern matching on dependent types,
+that is useful for defining programs with precise types and developing formal proofs about them
+-- it can then be seen as a lightweight alternative to the Equations Package.
 
 # Installation and compilation
 This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
@@ -47,12 +49,6 @@ showcases the use of proxy-based small inversions to manipulate the notably fini
 - [map2_around](./Examples/map2_around.v)
 expands on the use for vectors with different map functions.
 A co-inductive version of vectors is also briefly considered.
-
-- [comparison](./Examples/comparison.v)
-presents several approaches to define a given function on a dependent data-structure
-a given lemma on it: 
-small inversions of Monin and Shi, ITP13; the tactic `inversion`;
-and the `Equations` package of Sozeau.
 
 - [Fin_t](./Examples/Fin_t.v)
 presents how to use proxy-based small inversions to manipulate the `Fin.t` bounded natural numbers which are notoriously impractical to use.
