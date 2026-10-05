@@ -2,7 +2,7 @@
 To use this automation of the small inversions, you need Rocq and the library MetaRocq.
 To install them, first install the package manager opam.
 ## Requirements
-This code is intended for Rocq 9.1.0, and MetaRocq version 1.4.1+9.1.
+This code is intended for Rocq 9.2.0, and MetaRocq version 1.5.1+9.2.
 ## Installing opam
 To install opam, follow the instructions on their [website](https://opam.ocaml.org/doc/Install.html).
 

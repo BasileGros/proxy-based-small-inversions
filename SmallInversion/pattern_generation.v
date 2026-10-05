@@ -4,9 +4,9 @@ From MetaRocq.Template Require Import Checker.
 
 From utils Require Import utils.
 
-Notation ind_eq := {| inductive_mind := (MPfile ["Logic"; "Init"; "Corelib"], "eq"); inductive_ind := 0 |}.
+Abbreviation ind_eq := {| inductive_mind := (MPfile ["Logic"; "Init"; "Corelib"], "eq"); inductive_ind := 0 |}.
 
-
+Scheme All for list.
 (** Tree structure to internally represent specialisation subcalls*)
 Inductive tree (A:Type) :Type  :=
 | node: A -> list (tree A) -> tree A

@@ -140,6 +140,8 @@ Definition debug_strategy_specialisation : strategy :=
        (transfo_specialisation false)
        (fun _ => debug_strategy_param)).
 
+Scheme All for list.
+
 Inductive inversion_pattern :=
 |noInversion
 |pilotInversion : nat -> list inversion_pattern -> inversion_pattern.

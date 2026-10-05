@@ -11,7 +11,7 @@ Inductive in_list {A} (x:A) : list A -> Type :=
 | here {l} : in_list x (cons x l)
 | there {y l} : in_list x l -> in_list x (cons y l).
 
-Notation "t '∈' Γ" := (in_list t Γ) (at level 0).
+Notation "t '∈' Γ" := (in_list t Γ) (at level 70).
 
 Unset Elimination Schemes.
 Derive InvProxy for in_list.
@@ -94,7 +94,7 @@ Module STLC.
   | implies : Ty -> Ty -> Ty
   | int : Ty.
 
-  Notation "t '==>' u" := (implies t u) (at level 0).
+  Notation "t '==>' u" := (implies t u) (at level 1).
 
   Definition Ctx := list Ty.
 
@@ -106,12 +106,14 @@ Module STLC.
   | num : Z -> Expr Γ int
   | iop : (Z -> Z -> Z) -> Expr Γ int -> Expr Γ int -> Expr Γ int.
 
+  Scheme All for All.
+  
   Inductive Val : Ty -> Type :=
   | unitval : Val unit
   | numval : Z -> Val int
   | closure {Γ t u} : Expr (t :: Γ) u -> All Val Γ -> Val (t ==> u).
 
-  Notation "'Env' Γ" := (All Val Γ)(at level 0).
+  Notation "'Env' Γ" := (All Val Γ)(at level 70).
 
   Unset Elimination Schemes.
   Derive InvProxy for Val.
@@ -128,7 +130,7 @@ Module STLC.
          | None => None
          end.
 
-  Notation "mA '>>=' f" := (bind mA f)(at level 0, right associativity).
+  Notation "mA '>>=' f" := (bind mA f)(at level 70, right associativity).
 
   Definition ret {Γ A} (x : A) : M Γ A := λ _, Some x.
 

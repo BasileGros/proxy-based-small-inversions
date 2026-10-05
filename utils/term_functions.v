@@ -5,7 +5,7 @@ From utils Require Import error_monad.
 From utils Require Import list_functions.
 From utils Require Import db_manipulation.
 
-Notation nameAnon := {| binder_name := nAnon; binder_relevance := Relevant |}.
+Abbreviation nameAnon := {| binder_name := nAnon; binder_relevance := Relevant |}.
 
 (*Extracts the list of indices
 from the conclusion of a constructor's type telescope*)

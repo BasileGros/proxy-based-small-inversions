@@ -41,7 +41,7 @@ let derive_proxy (ind_ref : Libnames.qualid)(is_dep : bool) ~opaque_access : uni
   let _st =
     (Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
@@ -78,7 +78,7 @@ let derive_proxy_prefix (ind_ref : Libnames.qualid) prefix (is_dep : bool) ~opaq
   let _st =
     Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
@@ -115,7 +115,7 @@ let derive_one_proxy (ind_ref : Libnames.qualid) n (is_dep : bool) ~opaque_acces
   let _st =
     Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
@@ -151,7 +151,7 @@ let derive_one_proxy_prefix (ind_ref : Libnames.qualid) n prefix (is_dep : bool)
   let _st =
     Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
@@ -188,7 +188,7 @@ let derive_pattern_proxy (ind_ref : Libnames.qualid) patt (is_dep : bool) ~opaqu
   let _st =
     Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
@@ -224,7 +224,7 @@ let derive_pattern_proxy_prefix (ind_ref : Libnames.qualid) patt prefix (is_dep 
   let _st =
     Run_template_monad.run_template_program_rec
       opaque_access
-      ~poly:false
+      ~poly:PolyFlags.default
       ~intactic:false
       (fun ~st _ _ _ -> st)
       ~st:Declare.OblState.empty
