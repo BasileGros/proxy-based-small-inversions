@@ -1,7 +1,8 @@
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
-Import MRMonadNotation.
+
 From utils Require Import TM_notations.
+
 
 (*A monad that allows to transmit and add to an error trace*)
 Inductive ErrorMonad (A : Type) : Type :=
@@ -35,14 +36,15 @@ Definition tmErrorReturn {A : Type} (Err : ErrorMonad A) : TemplateMonad A :=
   nErr <-- tmEval all Err;;
   match nErr with
   |Error message => tmFail message
-  |Success a => eval <-- tmEval all a;; tmReturn a
+  |Success a =>
+     tmReturn a
   end.
 
 (*Converts to printing in MetaCoq's TemplateMonad*)
 Definition tmErrorPrint {A : Type} (Err : ErrorMonad A) : TemplateMonad unit :=
   match Err with
   |Error message => tmFail message
-  |Success a => b <- tmEval all a;;
+  |Success a => b <-- tmEval all a;;
                tmPrint b
   end.
 

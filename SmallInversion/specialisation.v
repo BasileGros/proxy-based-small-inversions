@@ -1,10 +1,11 @@
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
-Import MRMonadNotation.
 From utils Require Import utils.
 From SmallInversion Require Import data_extraction.
 From SmallInversion Require Import strategy_engine.
 From SmallInversion Require Import derecursivation.
+From SmallInversion Require Import data_structures.
+From SmallInversion Require Import universalisation.
 
 (*A data type that stores the form of the call for the pilot inductive
  in a given constructor*)
@@ -399,6 +400,7 @@ Definition data_extraction_spec
   term_P <-? extraction_inductive_pilot poib_R position_pilot ;;
   '(inductive_P,params_indices_P,tInd_P) <-? app_inductive_from_term term_P ;;
   '(mib_P, index_P) <-? mib_index_from_env tInd_P (env_quote transfo_info) ;;
+  (*let universalised_mib_P := universalisation_mib mib_P in*)
   let telescope_oib_P :=
     create_telescope_letin_mutual_inductive inductive_P (length mib_P.(ind_bodies))
   in
@@ -582,9 +584,9 @@ Definition partial_inductive_constructor
     specialize_pilot_index mod_type spec_info constructor_R.(cstr_arity)
   in
   
-  let new_args := telescope_to_args new_type 0 new_arity in
+  let new_args := telescope_to_context new_type 0 new_arity in
   
-  let new_indices := telescope_to_indices new_type 0 in
+  let new_indices := extract_instanciated_indices new_type 0 in
 
   {|
     cstr_name := new_name;
@@ -693,7 +695,7 @@ Definition create_partial_inductive
   : transformation_info × branch term × context_decl :=
   
   (*Creation of the insertion function of the new indices that are the arguments of Dj*)
-  let term_params := rev_context_to_tProd constructor_P.(cstr_args) in
+  let term_new_indices := rev_context_to_tProd constructor_P.(cstr_args) in
 
   (*The deBruijn list corresponding to the indices of Relation_Dj
     that replace the arguments of constructor Dj*)
@@ -730,7 +732,7 @@ Definition create_partial_inductive
   in
   (*Adds the new indices*)
   let new_type :=
-    insert_tProd_in_type prop_type (position_pilot spec_info) term_params
+    insert_tProd_in_type prop_type (position_pilot spec_info) term_new_indices
   in
   
   let new_name := (ident_R spec_info)^"_"^constructor_P.(cstr_name) in
@@ -791,7 +793,7 @@ so taking into account the parameters of Relation*)
   let deBruijn_app_dispatch := list_db_params_R ++ list_db_new_indices in
   
   let new_indices :=
-    telescope_to_args new_type 0 (nb_indices_R spec_info + (length constructor_P.(cstr_args)) -1)
+    telescope_to_context new_type 0 (nb_indices_R spec_info + (length constructor_P.(cstr_args)) -1)
   in
   let new_pmib :=
     {|
@@ -824,11 +826,11 @@ so taking into account the parameters of Relation*)
           bbody := remove_let_in (
                        lambda_dispatch(
                            tApp
-                             (tVar ("_"^new_name))
+                             (tVar (new_name))
                              (deBruijn_app_dispatch))) []
         |}
       ),
-      vass (string_to_aname ("_"^new_name)) new_type)
+      vass (string_to_aname (new_name)) new_type)
   ).
 
 
@@ -905,7 +907,6 @@ Definition change_type_call_constr
     match reference_pilot with
     |application _ _ _ => (cons_pilot.(cstr_indices), rev_context_to_tProd cons_pilot.(cstr_args))
     |variable deBruijn_variable _ params =>
-       (*let cons_param_P := full_derecursivation_constructor' (params) cons_pilot in*)
        let cons_param_P := full_derecursivation_constructor (og_transfo_info_P spec_info) params (telescope_oib_P spec_info) og_cons_pilot in
        ((map (lift0 (length args_cons)) params), rev_context_to_tProd cons_param_P.(cstr_args))
     end
@@ -942,7 +943,7 @@ Fixpoint create_cases_submatch
        get_value_from_int_map_err (index_cons_pilot inv_info) (list_ref_P spec_info)
      ;;
      
-     let constr_name := ("_"^ (cons_relation inv_info).(cstr_name)^"_"^ (cons_pilot inv_info).(cstr_name)) in
+     let constr_name := ((cons_relation inv_info).(cstr_name)^"_"^ (cons_pilot inv_info).(cstr_name)) in
      let constr := tVar constr_name in
      og_cons_pilot <-? (nth_err (concat_options (lctors (og_transfo_info_P spec_info))) (index_cons_pilot inv_info));;
      let decl_constr :=
@@ -1045,7 +1046,7 @@ Definition create_proxy_submatch
   
   (**The return clause of the match*)
 
-  let call_dispatch := (tVar ("_" ^ name_disp)) in
+  let call_dispatch := (tVar (name_disp)) in
   
   (*DeBruijns for x(i,k>θ)*)
   let deBruijn_args_after_variable := rev_range_deBruijn deBruijn_variable 0 in
@@ -1065,6 +1066,7 @@ Definition create_proxy_submatch
     context_to_letin (firstn (position_variable + 1) rev_args) deBruijns_for_let_in
   in
   let list_lifted_params := map (lift0 (deBruijn_variable + 1)) list_params in
+  
   let concl_return :=
     tApp call_dispatch (constructor_R.(cstr_indices))
   in
@@ -1151,10 +1153,10 @@ Fixpoint create_proxy_objects
                   (poib_R spec_info).(pseudo_type)
               in
               let cons_type :=
-              var_inductive constr_R.(cstr_type) (tVar ("_" ^ name_disp)) 
+              var_inductive constr_R.(cstr_type) (tVar (name_disp)) 
               in
               let cons_name :=
-                ("_"^ (cons_relation ref_pilot).(cstr_name)^"_"^ (cons_pilot ref_pilot).(cstr_name))
+                ((cons_relation ref_pilot).(cstr_name)^"_"^ (cons_pilot ref_pilot).(cstr_name))
               in
               let decl_cons :=
                 vass (string_to_aname cons_name) cons_type

@@ -13,12 +13,13 @@ utils/db_manipulation.v
 utils/map_constr_with_binders.v
 utils/term_functions.v
 utils/term_printer.v
-utils/data_structures.v
 utils/TM_functions.v
 utils/dissection.v
 utils/utils.v
 
 -R SmallInversion SmallInversion
+SmallInversion/universalisation.v
+SmallInversion/data_structures.v
 SmallInversion/typeclass.v
 SmallInversion/strategy_engine.v
 SmallInversion/strategy_debug.v

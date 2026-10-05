@@ -36,8 +36,12 @@ Inductive vect (A : Type) : nat → Type :=
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for vect.
 (* vect_O vect_S vect_proxy *)
+Arguments vect_proxy {_ _} _.
 Derive Dependent InvProxy for vect.
 (* vect_O_dep vect_S_dep vect_dproxy *)
+Arguments nil_O_dep {_}.
+Arguments cons_S_dep {_ _} _ _.
+Arguments vect_dproxy {_ _} _.
 Set Elimination Schemes.
 
 Arguments cons {A} _ {n}.
@@ -48,16 +52,6 @@ Notation "x :: v" := (cons x v).
 Notation "[ x ]" := (cons x nil).
 Notation "[ x ; y ; .. ; z ]" :=  (cons x (cons y .. (cons z nil) ..)).
 
-(* For convenient use of proxies in combination with the let construct *)
-Notation inv_vectS u := (invproxy u : vect_S _ _).
-Notation dinv_vectO u := (dinvproxy u : vect_O_dep _ _).
-Notation dinv_vectS u := (dinvproxy u : vect_S_dep _ _ _).
-
-Notation "'dinv_let' '()' := E 'in' F" :=
-  (let 'nil_O_dep _ := dinv_vectO E in F)  (at level 200).
-Notation "'dinv_let' ( A ,  B ) := E 'in' F" :=
-  (let 'cons_S_dep _ _ A B := dinv_vectS E in F)  (at level 200, A binder, B binder).
-
 (* ====================================================================== *)
 
 (* Recursion can be performed on the first vector *)
@@ -67,7 +61,7 @@ Definition map2 {A B C : Type} (f : A → B → C) :
     match u with
     | []      => λ v, []
     | x :: u' => λ v,
-        let (y, v') := inv_vectS v in
+        let (y, v') := vect_proxy v in
         f x y :: loop _ u' v'
     end.
 
@@ -89,8 +83,8 @@ Definition map3 {A B C D : Type} (f : A → B → C → D) :
     match u with
     | []      => λ v w, []
     | x :: u' => λ v w,
-        let (y, v') := inv_vectS v in
-        let (z, w') := inv_vectS w in
+        let (y, v') := vect_proxy v in
+        let (z, w') := vect_proxy w in
         f x y z :: loop _ u' v' w'
     end.
 
@@ -101,9 +95,9 @@ Definition map3_alt {A B C D : Type} (f : A → B → C → D) :
     match n with
     | O    => λ u v w, []
     | S n' => λ u v w,
-        let (x, u') := inv_vectS u in
-        let (y, v') := inv_vectS v in
-        let (z, w') := inv_vectS w in
+        let (x, u') := vect_proxy u in
+        let (y, v') := vect_proxy v in
+        let (z, w') := vect_proxy w in
         f x y z :: loop n' u' v' w'
     end.
 
@@ -139,7 +133,7 @@ Definition map_m {A : Type} m (f : An_to_A A m) :
            with
            | 0   => λ (r : A) (u' : vect A n'), r :: u'
            | S m' => λ fx fu u,
-               let (x, u') := inv_vectS u in
+               let (x, u') := vect_proxy u in
                loopm m' (fx x) (fu u')
            end)
           m f (loopn n')
@@ -167,8 +161,8 @@ Arguments Remap2 C {A B n} _ _.
 Fixpoint remap2 {A B C : Set} (f : A → B → C) {n} (u : vect A n) :
   ∀ v : vect B n, Remap2 C u v :=
   match u with
-  | []     => λ v, dinv_let () := v in Rmnil
-  | x :: u => λ v, dinv_let (y, v) := v in Rmcons (f x y) (remap2 f u v)
+  | []     => λ v, let 'nil_O_dep := vect_dproxy v in Rmnil
+  | x :: u => λ v, let 'cons_S_dep y v := vect_dproxy v in Rmcons (f x y) (remap2 f u v)
   end.
 
 
@@ -205,24 +199,22 @@ Proof. destruct v; reflexivity. Qed.
 Unset Elimination Schemes (* For comfort *).
 Derive InvProxy for covec.
 (* covec_CO covec_CS *)
+Arguments covec_proxy {_ _} _.
 Derive Dependent InvProxy for covec.
 (* covec_CO_dep covec_CS_dep *)
 Set Elimination Schemes.
-
-(* For convenience in let expressions *)
-Notation sinv_covec u := (invproxy u : covec_CS _ _).
 
 (* map2 on co-vectors *)
 CoFixpoint cvmap2 {A B C} (f : A → B → C) {n} (v : covec A n) : covec B n → covec C n :=
   match v with
   | [~] => λ _, [~]
-  | x ::~ v => λ w, let (y, w) := sinv_covec w in f x y ::~ cvmap2 f v w
+  | x ::~ v => λ w, let (y, w) := covec_proxy w in f x y ::~ cvmap2 f v w
   end.
 
 Definition cvmap2_step {A B C} (f : A → B → C) {n} (v : covec A n) : covec B n → covec C n :=
   match v with
   | [~] => λ _, [~]
-  | x ::~ v => λ w, let (y, w) := sinv_covec w in f x y ::~ cvmap2 f v w
+  | x ::~ v => λ w, let (y, w) := covec_proxy w in f x y ::~ cvmap2 f v w
   end.
 
 Lemma cvmap2_step_eq {A B C} (f : A → B → C) {n} (v : covec A n) (w : covec B n) :

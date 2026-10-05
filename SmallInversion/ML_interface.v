@@ -1,7 +1,6 @@
 From MetaRocq.Utils Require Import utils.
 From MetaRocq.Template Require Import All.
 From MetaRocq.Template Require Import Checker.
-Import MRMonadNotation.
 
 From SmallInversion Require Import MR_interface strategy_creation.
 
