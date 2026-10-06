@@ -5,7 +5,8 @@ that is useful for defining programs with precise types and developing formal pr
 -- it can then be seen as a lightweight alternative to the Equations Package.
 
 # Installation and compilation
-This plugin works with Rocq version 9.1, and MetaRocq version 1.4.1+9.1.
+This plugin works with Rocq from version 9.1, and MetaRocq from version 1.4.1+9.1.
+Please use the git branch corresponding to your Rocq environment.
 Using opam, the following command should compile and install the plugin.
 ```bash
 opam pin git+https://github.com/BasileGros/proxy-based-small-inversions
