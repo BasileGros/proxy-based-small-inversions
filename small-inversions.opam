@@ -15,7 +15,7 @@ homepage: "https://github.com/BasileGros/proxy-based-small-inversions"
 bug-reports: "https://github.com/BasileGros/proxy-based-small-inversions"
 dev-repo: "https://github.com/BasileGros/proxy-based-small-inversions"
 depends: [ "rocq-metarocq-template" {= "1.5.1+9.2"}
-  "coq" {>= "9.1.0"}]
+  "coq" {>= "9.2.0"}]
 build: [
   [make]
 ]
