@@ -37,6 +37,12 @@ first check that the above requirements are satisfied:
 make check-version
 ```
 
+If you already installed a previous version of our plugin:
+
+```bash
+make allclean
+```
+
 Then run the following commands:  
 
 ```bash
