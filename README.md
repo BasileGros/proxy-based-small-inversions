@@ -5,8 +5,11 @@ that is useful for defining programs with precise types and developing formal pr
 -- it can then be seen as a lightweight alternative to the Equations Package.
 
 # Installation and compilation
-This plugin works with Rocq from version 9.1, and MetaRocq from version 1.5.1+9.1.
-Please use the git branch corresponding to your Rocq environment.
+Versions of this plugin are available since Rocq 9.1 and MetaRocq 1.4.1+9.1.
+Please use the git branch corresponding to your Rocq + MetaRocq environment,
+see [INSTALL.md](./INSTALL.md) for details.
+
+
 Using opam, the following command should compile and install the plugin.
 ```bash
 opam pin git+https://github.com/BasileGros/proxy-based-small-inversions
@@ -15,8 +18,6 @@ opam pin git+https://github.com/BasileGros/proxy-based-small-inversions
 ``` bash
 opam pin git+ssh://git@github.com/BasileGros/proxy-based-small-inversions.git
 ```
-
-For more details, see [INSTALL.md](./INSTALL.md).
 
 # Usage
 In your Rocq file, import the plugin with the command
@@ -28,7 +29,8 @@ From SmallInversion Require Import small_inversion.
 We assume a (co)inductively defined type $T$, defined using the keywords
 `Inductive`, `CoInductive` or just `Variant`.
 In what follows, we use the term “algebraic type” to encompass these possibilities.
-Proxy-based small inversions (PBSI) are based on specialised versions of $T$ according to the values (more precisely, the patterns) of the algebraic indices of $T$.
+Proxy-based small inversions (PBSI) are based on specialised versions of $T$ according to
+the values (more precisely, the patterns) of the algebraic indices of $T$.
 
 Proxy-based small inversions are used in two steps.
 First, call the preliminary command:  
@@ -45,7 +47,8 @@ For an introduction, you can find many more details in
 The [Examples](./Examples) folder illustrates various use cases of proxy-based small inversions.
 
 - [matrices](./Examples/matrices.v)
-showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq, using transposition of matrices as an example.
+showcases the use of proxy-based small inversions to manipulate the notably finicky size-indexed vectors of Rocq,
+using transposition of matrices as an example.
 
 - [map2_around](./Examples/map2_around.v)
 expands on the use for vectors with different map functions.
