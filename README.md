@@ -73,6 +73,9 @@ by Poulsen et al., POPL 2018.
 presents the "extended example" developed in the last section of
    "The view from the left" by McBride & McKinna, JFP 2004.
 
+- [nb_steps_Braga](./Examples/nb_steps_Braga.v)
+provides an introductory example showing how PBSI can be used in combination with the Braga method.
+
 
 To learn more about proxy-based small inversions, see [here](https://hal.science/hal-05469909).
 
