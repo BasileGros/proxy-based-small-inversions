@@ -71,7 +71,7 @@ presents the "extended example" developed in the last section of
    "The view from the left" by McBride & McKinna, JFP 2004.
 
 
-To learn more about proxy-based small inversions, see [here](https://hal.science/hal-05469909).
+To learn more about proxy-based small inversions, see [here](https://easychair.org/publications/paper/xHSb5).
 
 # Authors
 Pierre Corbineau  
