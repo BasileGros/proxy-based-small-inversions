@@ -2,3 +2,4 @@ From SmallInversion Require Export typeclass MR_interface ML_interface strategy_
 From MetaRocq.Utils Require Export utils.
 Global Unset Asymmetric Patterns.
 Global Unset MetaRocq Strict Unquote Universe Mode.
+Open Scope nat_scope.
